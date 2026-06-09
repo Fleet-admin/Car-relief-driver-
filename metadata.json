@@ -1,0 +1,10 @@
+{
+  "name": "Remix: Car \u0026 Driver Relief Services",
+  "description": "Premium fleet booking and professional driver relief services platform with live maps and realtime admin dashboard.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

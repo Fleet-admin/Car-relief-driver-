@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+}
+
+/* Global design theme improvements */
+body {
+  font-family: var(--font-sans);
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), var(--font-sans);
+  letter-spacing: -0.025em;
+}
+
+/* Custom styling helper for smooth motion and map visuals */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+  border-radius: 0.75rem;
+}
+
+.animate-pulse-once {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) 1;
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.8,0,1,1);
+  }
+  50% {
+    transform: translateY(-4px);
+    animation-timing-function: cubic-bezier(0,0,0.2,1);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 3s infinite;
+}
