@@ -6,7 +6,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Inquiry, InquiryStatus, ServiceType } from '../types';
 
-// Read configuration from environment variables or local storage overrides
+// Read configuration from environment variables
 const getSupabaseConfig = () => {
   const metaEnv = (import.meta as any).env || {};
   
@@ -29,7 +29,6 @@ const getSupabaseConfig = () => {
     processEnv.NEXT_PUBLIC_SUPABASE_URL ||
     processEnv.VITE_NEXT_PUBLIC_SUPABASE_URL ||
     processEnv.SUPABASE_URL ||
-    (typeof window !== 'undefined' ? localStorage.getItem('override_supabase_url') : '') ||
     ''
   ).trim();
 
@@ -41,7 +40,6 @@ const getSupabaseConfig = () => {
     processEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     processEnv.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     processEnv.SUPABASE_ANON_KEY ||
-    (typeof window !== 'undefined' ? localStorage.getItem('override_supabase_anon_key') : '') ||
     ''
   ).trim();
 
@@ -71,7 +69,13 @@ export const config = getSupabaseConfig();
 let supabaseClient: SupabaseClient | null = null;
 if (config.isConfigured) {
   try {
-    supabaseClient = createClient(config.url, config.anonKey);
+    supabaseClient = createClient(config.url, config.anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      }
+    });
     console.log('[Supabase Service Success] Client initialized successfully.');
   } catch (error) {
     console.error('[Supabase Service Error] Failed to initialize Supabase client:', error);
@@ -109,18 +113,6 @@ export const SupabaseService = {
       url: config.url,
       anonKey: config.anonKey,
     };
-  },
-
-  setOverrideCredentials(url: string, anonKey: string) {
-    localStorage.setItem('override_supabase_url', url);
-    localStorage.setItem('override_supabase_anon_key', anonKey);
-    window.location.reload();
-  },
-
-  clearOverrideCredentials() {
-    localStorage.removeItem('override_supabase_url');
-    localStorage.removeItem('override_supabase_anon_key');
-    window.location.reload();
   },
 
   async queryInquiries(): Promise<Inquiry[]> {

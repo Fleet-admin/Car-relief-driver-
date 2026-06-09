@@ -80,15 +80,14 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
   // Selected Inquiry detail view modal
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
 
-  // DB credentials configuration panel states
-  const [showConfig, setShowConfig] = useState(false);
-  const [dbUrlInput, setDbUrlInput] = useState('');
-  const [dbKeyInput, setDbKeyInput] = useState('');
-  const [credentialsSetSuccess, setCredentialsSetSuccess] = useState(false);
-
   // Authentication Lock state
   const [passcode, setPasscode] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('admin_authenticated') === 'true';
+    }
+    return false;
+  });
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Sound enablement state
@@ -99,6 +98,9 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
     e.preventDefault();
     if (passcode === 'admin' || passcode === '1234') {
       setIsAuthenticated(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('admin_authenticated', 'true');
+      }
       setAuthError(null);
     } else {
       setAuthError('Incorrect passcode credentials. (Try "admin" or "1234" to unlock)');
@@ -191,11 +193,6 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
       loadData();
     });
 
-    // Preset setup placeholders for URLs
-    const creds = SupabaseService.getCredentials();
-    setDbUrlInput(creds.url);
-    setDbKeyInput(creds.anonKey);
-
     return () => {
       unsubscribe();
     };
@@ -229,21 +226,7 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
     }
   };
 
-  const saveDatabaseCredentials = (e: React.FormEvent) => {
-    e.preventDefault();
-    SupabaseService.setOverrideCredentials(dbUrlInput, dbKeyInput);
-    setCredentialsSetSuccess(true);
-    setTimeout(() => {
-      setCredentialsSetSuccess(false);
-      setShowConfig(false);
-    }, 1500);
-  };
 
-  const clearDatabaseCredentials = () => {
-    SupabaseService.clearOverrideCredentials();
-    setDbUrlInput('');
-    setDbKeyInput('');
-  };
 
   // Request browser Notification permissions
   const requestNotificationPermission = () => {
@@ -364,22 +347,24 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
             </span>
           </button>
 
-          {/* Core DB key configuration dialog toggle */}
-          <button
-            onClick={() => setShowConfig(!showConfig)}
-            id="btn-toggle-db-config"
+          {/* Core DB key configuration indicator */}
+          <div
+            id="db-config-status"
             className={`px-3 py-2 border rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
               SupabaseService.isUsingFallback()
-                ? 'bg-amber-50 border-amber-200 text-amber-800 animate-pulse'
+                ? 'bg-amber-50 border-amber-200 text-amber-800'
                 : 'bg-emerald-50 border-emerald-200 text-emerald-800'
             }`}
           >
             <Database className="w-3.5 h-3.5" />
-            {SupabaseService.isUsingFallback() ? 'Configure Remote DB REQUIRED' : 'Secure Database Connected'}
-          </button>
+            {SupabaseService.isUsingFallback() ? 'Database: Env Keys Missing (Fallback Memory Active)' : 'Database: Connected via Secure Env'}
+          </div>
 
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => {
+              setIsAuthenticated(false);
+              localStorage.removeItem('admin_authenticated');
+            }}
             id="btn-admin-logout"
             className="p-2 border border-neutral-200 bg-white hover:bg-red-50 hover:text-red-600 rounded-xl transition text-neutral-500"
             title="Log out from Admin session"
@@ -391,7 +376,7 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
 
       {/* Database Setup Action Alert Banner */}
       {SupabaseService.isUsingFallback() && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-sans animate-bounce-subtle">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-sans">
           <div className="flex gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
@@ -399,88 +384,11 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
                 Configured with Fallback Sandboxed Memory
               </h4>
               <p className="text-xs text-amber-700 mt-1 max-w-2xl">
-                The application is running in fully-functional secure client sandbox memory because your environment
-                variable keys are empty. You can copy the database table schema SQL below and plug in your live Database
-                credentials using the configuration button!
+                The application is running in local sandboxed memory fallback because your environment
+                variable keys are empty or not loaded yet. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your deployment environment variables to activate PostgreSQL storage.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowConfig(true)}
-            id="btn-pwa-configure-credentials"
-            className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl shrink-0 transition"
-          >
-            Connect Database Now
-          </button>
-        </div>
-      )}
-
-      {/* Supabase Override Config Form Panel */}
-      {showConfig && (
-        <div className="p-6 bg-white border border-neutral-200 rounded-2xl shadow-xl space-y-4" id="db-config-panel">
-          <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-            <h4 className="font-bold text-sm text-neutral-900 flex items-center gap-1.5">
-              <Database className="w-4 h-4 text-indigo-500" />
-              Dynamic Database Setup
-            </h4>
-            <span className="text-[9px] uppercase font-bold text-neutral-400">Live Client Adapter Override</span>
-          </div>
-
-          <form onSubmit={saveDatabaseCredentials} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1 font-sans">
-                  DATABASE ENDPOINT URL
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={dbUrlInput}
-                  onChange={(e) => setDbUrlInput(e.target.value)}
-                  placeholder="https://your-secured-cloud-database-api-endpoint"
-                  className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1 font-sans">
-                  DATABASE PUBLIC ACCESS JWT KEY
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={dbKeyInput}
-                  onChange={(e) => setDbKeyInput(e.target.value)}
-                  placeholder="secure-token-string-value"
-                  className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans"
-                />
-              </div>
-            </div>
-
-            <p className="text-[10px] text-neutral-400 font-sans leading-relaxed">
-              * Note: Providing these credentials stores them privately inside your browser's local sandbox storage,
-              instantly switching all database fetches and Realtime trigger pipes to write to your database rather than
-              memory caches.
-            </p>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="submit"
-                id="btn-save-credentials"
-                className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg text-xs font-semibold"
-              >
-                {credentialsSetSuccess ? 'Credentials Applied & Reloading!' : 'Apply Credentials & Sync'}
-              </button>
-              <button
-                type="button"
-                id="btn-clear-save-creds"
-                onClick={clearDatabaseCredentials}
-                className="px-4 py-2 bg-neutral-100 hover:bg-red-50 text-neutral-700 hover:text-red-700 rounded-lg text-xs font-semibold"
-              >
-                Clear Override Config
-              </button>
-            </div>
-          </form>
         </div>
       )}
 
