@@ -9,20 +9,60 @@ import { Inquiry, InquiryStatus, ServiceType } from '../types';
 // Read configuration from environment variables or local storage overrides
 const getSupabaseConfig = () => {
   const metaEnv = (import.meta as any).env || {};
-  const envUrl = metaEnv.VITE_SUPABASE_URL || '';
-  const envKey = metaEnv.VITE_SUPABASE_ANON_KEY || '';
   
-  // Also check standard Next.js-like environment variables as specified in the environment prompt!
-  const nextUrl = metaEnv.VITE_NEXT_PUBLIC_SUPABASE_URL || '';
-  const nextKey = metaEnv.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  // Safely get process.env if available, with fallbacks
+  let processEnv: Record<string, string> = {};
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      processEnv = process.env as any;
+    }
+  } catch (e) {
+    // ignore
+  }
 
-  const finalUrl = envUrl || nextUrl || localStorage.getItem('override_supabase_url') || '';
-  const finalKey = envKey || nextKey || localStorage.getItem('override_supabase_anon_key') || '';
+  // Support VITE_, NEXT_PUBLIC_, and other standard Supabase env variable conventions
+  const finalUrl = (
+    metaEnv.VITE_SUPABASE_URL ||
+    metaEnv.VITE_NEXT_PUBLIC_SUPABASE_URL ||
+    metaEnv.NEXT_PUBLIC_SUPABASE_URL ||
+    processEnv.VITE_SUPABASE_URL ||
+    processEnv.NEXT_PUBLIC_SUPABASE_URL ||
+    processEnv.VITE_NEXT_PUBLIC_SUPABASE_URL ||
+    processEnv.SUPABASE_URL ||
+    (typeof window !== 'undefined' ? localStorage.getItem('override_supabase_url') : '') ||
+    ''
+  ).trim();
+
+  const finalKey = (
+    metaEnv.VITE_SUPABASE_ANON_KEY ||
+    metaEnv.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    metaEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    processEnv.VITE_SUPABASE_ANON_KEY ||
+    processEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    processEnv.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    processEnv.SUPABASE_ANON_KEY ||
+    (typeof window !== 'undefined' ? localStorage.getItem('override_supabase_anon_key') : '') ||
+    ''
+  ).trim();
+
+  const isConfigured = finalUrl.length > 0 && finalKey.length > 0;
+
+  // Mask sensitive database URL and Key details for secure production console verification
+  const maskedUrl = finalUrl ? `${finalUrl.substring(0, 15)}...${finalUrl.substring(finalUrl.length - 4 || 0)}` : 'NOT_FOUND';
+  const maskedKey = finalKey ? `${finalKey.substring(0, 8)}...${finalKey.substring(finalKey.length - 4 || 0)}` : 'NOT_FOUND';
+
+  console.log('[Supabase Client Initialization Debug]:', {
+    urlAvailable: !!finalUrl,
+    urlMasked: maskedUrl,
+    keyAvailable: !!finalKey,
+    keyMasked: maskedKey,
+    isConfigured
+  });
 
   return {
-    url: finalUrl.trim(),
-    anonKey: finalKey.trim(),
-    isConfigured: finalUrl.trim().length > 0 && finalKey.trim().length > 0,
+    url: finalUrl,
+    anonKey: finalKey,
+    isConfigured,
   };
 };
 
@@ -32,9 +72,12 @@ let supabaseClient: SupabaseClient | null = null;
 if (config.isConfigured) {
   try {
     supabaseClient = createClient(config.url, config.anonKey);
+    console.log('[Supabase Service Success] Client initialized successfully.');
   } catch (error) {
-    console.error('Failed to initialize Supabase client:', error);
+    console.error('[Supabase Service Error] Failed to initialize Supabase client:', error);
   }
+} else {
+  console.warn('[Supabase Service Warning] Client not initialized. Missing environment configurations.');
 }
 
 // Memory/LocalStorage cache for local sandbox testing if Supabase is not connected yet
@@ -81,20 +124,28 @@ export const SupabaseService = {
   },
 
   async queryInquiries(): Promise<Inquiry[]> {
+    console.log('[Supabase Service] queryInquiries called.');
     if (supabaseClient) {
       try {
+        console.log('[Supabase Service] Performing SELECT on public.inquiries...');
         const { data, error } = await supabaseClient
           .from('inquiries')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase Service error] queryInquiries database error details:', error);
+          throw error;
+        }
+
+        console.log(`[Supabase Service success] Fetch completed successfully. Received ${data?.length || 0} inquiry records.`);
         return (data || []) as Inquiry[];
-      } catch (err) {
-        console.error('Supabase fetch failed, holding back to local records:', err);
+      } catch (err: any) {
+        console.error('[Supabase Service fetch failure] queryInquiries failed. Falling back to local state:', err);
         return getLocalInquiries();
       }
     }
+    console.warn('[Supabase Service warning] Supabase client is not initialized. Using local memory storage fallback.');
     return getLocalInquiries();
   },
 
@@ -106,8 +157,11 @@ export const SupabaseService = {
       created_at: new Date().toISOString(),
     };
 
+    console.log('[Supabase Service] insertInquiry called with payload:', newInquiry);
+
     if (supabaseClient) {
       try {
+        console.log('[Supabase Service] Performing INSERT into public.inquiries...');
         const { data, error } = await supabaseClient
           .from('inquiries')
           .insert([
@@ -129,16 +183,22 @@ export const SupabaseService = {
           ])
           .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase Service error] insertInquiry database error details:', error);
+          throw error;
+        }
+
         if (data && data[0]) {
+          console.log('[Supabase Service success] Record inserted successfully:', data[0]);
           return data[0] as Inquiry;
         }
-      } catch (err) {
-        console.error('Supabase write failed, falling back to local simulation:', err);
+      } catch (err: any) {
+        console.error('[Supabase Service write failure] insertInquiry failed. Falling back to local state simulation:', err);
       }
     }
 
     // fallback simulation
+    console.warn('[Supabase Service warning] Supabase client is not initialized or write failed. Falling back to local state.');
     const currentList = getLocalInquiries();
     const updated = [newInquiry, ...currentList];
     saveLocalInquiries(updated);
@@ -146,20 +206,28 @@ export const SupabaseService = {
   },
 
   async updateStatus(id: string, status: InquiryStatus): Promise<boolean> {
+    console.log(`[Supabase Service] updateStatus called for ID: ${id}, status: ${status}`);
     if (supabaseClient) {
       try {
+        console.log('[Supabase Service] Performing UPDATE on public.inquiries...');
         const { error } = await supabaseClient
           .from('inquiries')
           .update({ status })
           .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Supabase Service error] updateStatus database error details:', error);
+          throw error;
+        }
+
+        console.log(`[Supabase Service success] Update status complete for ID: ${id}`);
         return true;
-      } catch (err) {
-        console.error('Supabase update status failed:', err);
+      } catch (err: any) {
+        console.error('[Supabase Service failure] updateStatus failed:', err);
       }
     }
 
+    console.warn('[Supabase Service warning] Supabase client not initialized or update failed. Updating local mock state.');
     const currentList = getLocalInquiries();
     const index = currentList.findIndex((item) => item.id === id);
     if (index !== -1) {
@@ -171,21 +239,28 @@ export const SupabaseService = {
   },
 
   async deleteInquiry(id: string): Promise<boolean> {
+    console.log(`[Supabase Service] deleteInquiry called for ID: ${id}`);
     if (supabaseClient) {
       try {
+        console.log('[Supabase Service] Performing DELETE on public.inquiries...');
         const { error } = await supabaseClient
-          .from('from')
+          .from('inquiries')
           .delete()
           .eq('id', id);
-        // Note: checking table delete
-        const { error: err2 } = await supabaseClient.from('inquiries').delete().eq('id', id);
-        if (err2) throw err2;
+
+        if (error) {
+          console.error('[Supabase Service error] deleteInquiry database error details:', error);
+          throw error;
+        }
+
+        console.log(`[Supabase Service success] Deleted ID: ${id} successfully from database.`);
         return true;
-      } catch (err) {
-        console.error('Supabase delete failed:', err);
+      } catch (err: any) {
+        console.error('[Supabase Service failure] deleteInquiry failed:', err);
       }
     }
 
+    console.warn('[Supabase Service warning] Supabase client not initialized or delete failed. Updating local mock state.');
     const currentList = getLocalInquiries();
     const filtered = currentList.filter((item) => item.id !== id);
     saveLocalInquiries(filtered);
@@ -204,15 +279,15 @@ export const SupabaseService = {
         activeChannel = supabaseClient
           .channel('inquiries-realtime-channel')
           .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'inquiries' },
-            (payload) => {
-              const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
-              const nextRecord = (payload.new || payload.old) as Inquiry;
-              if (nextRecord) {
-                onEvent(nextRecord, eventType);
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'inquiries' },
+              (payload) => {
+                const eventType = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+                const nextRecord = (payload.new || payload.old) as Inquiry;
+                if (nextRecord) {
+                  onEvent(nextRecord, eventType);
+                }
               }
-            }
           )
           .subscribe();
       } catch (err) {
