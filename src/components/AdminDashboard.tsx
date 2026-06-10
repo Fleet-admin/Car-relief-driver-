@@ -120,31 +120,39 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
 
-  const saveFareSettings = (e: React.FormEvent) => {
+  const saveFareSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      localStorage.setItem('admin_service_fares', JSON.stringify(serviceFares));
+      const ok = await SupabaseService.saveServiceFares(serviceFares);
       setSaveSuccessMsg(true);
-      onNotifyTriggered('Fare formula mappings updated and synchronized successfully!');
+      if (ok) {
+        onNotifyTriggered('Fare formula updated and saved to Supabase database successfully!');
+      } else {
+        onNotifyTriggered('Fare formula updated locally, but Supabase connection failed.');
+      }
       setTimeout(() => setSaveSuccessMsg(false), 3000);
     } catch (err: any) {
       alert('Failed to save settings: ' + err.message);
     }
   };
 
-  const resetFareToDefaults = () => {
-    if (window.confirm('Do you want to reset all service fare configurations back to default system plans?')) {
+  const resetFareToDefaults = async () => {
+    if (window.confirm('Do you want to reset all service fare configurations back to default system plans? This will overwrite the live database settings.')) {
       const defaultConfigs = {
-        'Fleet Booking': { base: 50.00, rate: 15.00 },
+        'Fleet Booking': { base: 50.00, rate: 15.000 },
         'Driver Relief': { base: 100.00, rate: 10.00 },
         'Outstation Trip': { base: 150.00, rate: 12.00 },
         'Wedding Booking': { base: 500.00, rate: 25.00 },
         'Custom Requirement': { base: 200.00, rate: 18.00 },
       };
       setServiceFares(defaultConfigs);
-      localStorage.setItem('admin_service_fares', JSON.stringify(defaultConfigs));
+      const ok = await SupabaseService.saveServiceFares(defaultConfigs);
       setSaveSuccessMsg(true);
-      onNotifyTriggered('Fare formula reset to standard defaults!');
+      if (ok) {
+        onNotifyTriggered('Fare formula reset to standard defaults in Supabase!');
+      } else {
+        onNotifyTriggered('Fare formula reset to standard defaults locally!');
+      }
       setTimeout(() => setSaveSuccessMsg(false), 3000);
     }
   };
@@ -217,6 +225,9 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
     try {
       const data = await SupabaseService.queryInquiries();
       setInquiries(data);
+      
+      const fares = await SupabaseService.getServiceFares();
+      setServiceFares(fares);
     } catch (err: any) {
       setErrorText(err?.message || 'Database lookup query failed. Check SQL tables schema.');
     } finally {

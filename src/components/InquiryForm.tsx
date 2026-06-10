@@ -72,7 +72,7 @@ export default function InquiryForm({
   const [submissionSuccess, setSubmissionSuccess] = useState<any | null>(null);
 
   // Configurable Pricing Formula States mapped via Admin Panel config
-  const fareConfigs = useMemo<Record<ServiceType, { base: number; rate: number }>>(() => {
+  const [fareConfigs, setFareConfigs] = useState<Record<ServiceType, { base: number; rate: number }>>(() => {
     const defaultConfigs: Record<ServiceType, { base: number; rate: number }> = {
       'Fleet Booking': { base: 50.00, rate: 15.00 },
       'Driver Relief': { base: 100.00, rate: 10.00 },
@@ -92,6 +92,39 @@ export default function InquiryForm({
       // ignore
     }
     return defaultConfigs;
+  });
+
+  // Pull live values from Supabase on load
+  useEffect(() => {
+    let active = true;
+    const loadFares = async () => {
+      try {
+        const liveFares = await SupabaseService.getServiceFares();
+        if (active && liveFares) {
+          setFareConfigs(liveFares as any);
+        }
+      } catch (err) {
+        console.warn('Failed to load live fare configs from Supabase, staying with local fallback:', err);
+      }
+    };
+    loadFares();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Listen to live database rate change events
+  useEffect(() => {
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<Record<ServiceType, { base: number; rate: number }>>;
+      if (customEvent.detail) {
+        setFareConfigs(customEvent.detail);
+      }
+    };
+    window.addEventListener('supabase-settings-updated', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('supabase-settings-updated', handleSettingsUpdate);
+    };
   }, []);
 
   // Calculated distance states

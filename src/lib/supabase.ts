@@ -332,4 +332,107 @@ export const SupabaseService = {
       window.removeEventListener('supabase-realtime-inquiry', localChangeHandler);
     };
   },
+
+  async getServiceFares(): Promise<Record<string, { base: number; rate: number }>> {
+    const defaultConfigs: Record<string, { base: number; rate: number }> = {
+      'Fleet Booking': { base: 50.00, rate: 15.00 },
+      'Driver Relief': { base: 100.00, rate: 10.00 },
+      'Outstation Trip': { base: 150.00, rate: 12.00 },
+      'Wedding Booking': { base: 500.00, rate: 25.00 },
+      'Custom Requirement': { base: 200.00, rate: 18.00 },
+    };
+
+    if (supabaseClient) {
+      try {
+        console.log('[Supabase Service] querySettings called for key: "service_fares" on system_settings');
+        const { data, error } = await supabaseClient
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'service_fares')
+          .maybeSingle();
+
+        if (error) {
+          console.warn('[Supabase Service warning] Error fetching service_fares from system_settings table, trying settings fallback:', error);
+          const { data: altData, error: altError } = await supabaseClient
+            .from('settings')
+            .select('value')
+            .eq('key', 'service_fares')
+            .maybeSingle();
+
+          if (altError) {
+            console.error('[Supabase Service error] Error fetching service_fares from settings fallback:', altError);
+          } else if (altData && altData.value) {
+            console.log('[Supabase Service success] Loaded service_fares from fallback settings table', altData.value);
+            const parsed = typeof altData.value === 'string' ? JSON.parse(altData.value) : altData.value;
+            return { ...defaultConfigs, ...parsed };
+          }
+        } else if (data && data.value) {
+          console.log('[Supabase Service success] Loaded service_fares from system_settings table', data.value);
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          return { ...defaultConfigs, ...parsed };
+        }
+      } catch (err) {
+        console.warn('[Supabase Service warn] Exception fetching service_fares:', err);
+      }
+    }
+
+    // Fallback to localStorage or default
+    try {
+      const saved = localStorage.getItem('admin_service_fares');
+      if (saved) {
+        return { ...defaultConfigs, ...JSON.parse(saved) };
+      }
+    } catch {
+      // ignore
+    }
+    return defaultConfigs;
+  },
+
+  async saveServiceFares(fares: Record<string, { base: number; rate: number }>): Promise<boolean> {
+    // 1. Save to local storage for quick offline / single sandbox caching
+    try {
+      localStorage.setItem('admin_service_fares', JSON.stringify(fares));
+      // Dispatch custom event for real-time reactivity in custom UI components
+      window.dispatchEvent(new CustomEvent('supabase-settings-updated', { detail: fares }));
+    } catch (e) {
+      console.error('Failed to save service_fares locally:', e);
+    }
+
+    // 2. Save to Supabase system_settings table if configured
+    if (supabaseClient) {
+      try {
+        console.log('[Supabase Service] upserting to system_settings table: key: "service_fares"');
+        const { error } = await supabaseClient
+          .from('system_settings')
+          .upsert({
+            key: 'service_fares',
+            value: fares,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' });
+
+        if (error) {
+          console.warn('[Supabase Service warning] Failed to upsert service_fares to system_settings, trying fallback settings table:', error);
+          const { error: altError } = await supabaseClient
+            .from('settings')
+            .upsert({
+              key: 'service_fares',
+              value: fares,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+
+          if (altError) {
+            console.error('[Supabase Service error] Failed to upsert service_fares to settings table fallback either:', altError);
+            throw altError;
+          }
+        }
+
+        console.log('[Supabase Service success] Service fares saved successfully.');
+        return true;
+      } catch (err: any) {
+        console.error('[Supabase Service fail] saveServiceFares exception:', err);
+        return false;
+      }
+    }
+    return true;
+  },
 };
