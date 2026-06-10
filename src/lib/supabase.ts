@@ -171,6 +171,7 @@ export const SupabaseService = {
               travel_date: newInquiry.travel_date,
               additional_requirements: newInquiry.additional_requirements,
               status: newInquiry.status,
+              vehicle_category: newInquiry.vehicle_category,
             }
           ])
           .select();

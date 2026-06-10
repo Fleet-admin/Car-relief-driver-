@@ -27,6 +27,7 @@ export interface Inquiry {
   additional_requirements: string | null;
   status: InquiryStatus;
   created_at: string;
+  vehicle_category?: string | null;
 }
 
 export interface DashboardMetrics {

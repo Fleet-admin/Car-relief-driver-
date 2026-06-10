@@ -799,6 +799,11 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                           </span>
                         </div>
 
+                        {/* Vehicle Category label */}
+                        <div className="text-xs text-neutral-500 mt-1 font-medium font-sans">
+                          Vehicle Category: <span className="text-neutral-800 font-bold">{inq.vehicle_category || 'Not Specified'}</span>
+                        </div>
+
                         {/* Customer Name */}
                         <h4 className="text-md font-bold text-neutral-950 tracking-tight mt-1.5 flex items-center gap-1.5">
                           {inq.name}

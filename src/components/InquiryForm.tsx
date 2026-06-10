@@ -17,7 +17,8 @@ import {
   Settings, 
   Coins, 
   Route, 
-  Info 
+  Info,
+  Car
 } from 'lucide-react';
 import { ServiceType } from '../types';
 import { SupabaseService } from '../lib/supabase';
@@ -60,6 +61,7 @@ export default function InquiryForm({
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType>('Fleet Booking');
+  const [vehicleCategory, setVehicleCategory] = useState<string>('');
   const [travelDate, setTravelDate] = useState('');
   const [additionalRequirements, setAdditionalRequirements] = useState('');
 
@@ -216,6 +218,10 @@ export default function InquiryForm({
       setValidationError('A working mobile/contact phone number is required to confirm details.');
       return;
     }
+    if (!vehicleCategory) {
+      setValidationError('Please select a preferred vehicle category.');
+      return;
+    }
     if (!travelDate) {
       setValidationError('Please select a scheduled travel or start date.');
       return;
@@ -225,7 +231,7 @@ export default function InquiryForm({
 
     try {
       // Encode estimation spec to prepend to additional requirements
-      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Service: ${serviceType} | Base: ₹${activeConfig.base.toFixed(2)} | Rate: ₹${activeConfig.rate.toFixed(2)}/km | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
+      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Service: ${serviceType} | Vehicle: ${vehicleCategory} | Base: ₹${activeConfig.base.toFixed(2)} | Rate: ₹${activeConfig.rate.toFixed(2)}/km | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
       
       const combinedNotes = additionalRequirements.trim()
         ? `${specificationBadge}\nCustomer Notes: ${additionalRequirements.trim()}`
@@ -243,6 +249,7 @@ export default function InquiryForm({
         drop_longitude: dropLoc ? dropLoc.lng : null,
         travel_date: travelDate,
         additional_requirements: combinedNotes,
+        vehicle_category: vehicleCategory,
       });
 
       // Dispatch real status
@@ -253,6 +260,7 @@ export default function InquiryForm({
       setName('');
       setPhone('');
       setServiceType('Fleet Booking');
+      setVehicleCategory('');
       setTravelDate('');
       setAdditionalRequirements('');
       setPickupAddress('');
@@ -391,6 +399,64 @@ export default function InquiryForm({
                   <option value="Wedding Booking">Wedding & Event Bookings</option>
                   <option value="Custom Requirement">Custom Requirements</option>
                 </select>
+              </div>
+
+              {/* Vehicle Category drop down */}
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <Car className="w-3.5 h-3.5 text-neutral-400" />
+                  Vehicle Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="select-vehicle-category"
+                  value={vehicleCategory}
+                  onChange={(e) => setVehicleCategory(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition"
+                >
+                  <option value="">Choose your preferred vehicle category</option>
+                  <option value="Premium Sedan">Premium Sedan</option>
+                  <option value="Luxury SUV">Luxury SUV</option>
+                  <option value="Innova / MPV Tier">Innova / MPV Tier</option>
+                  <option value="Tempo Traveller Cruiser">Tempo Traveller Cruiser</option>
+                </select>
+
+                {/* Optional description display note */}
+                {vehicleCategory && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-neutral-800 transition-all">
+                    <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      {vehicleCategory === 'Premium Sedan' && (
+                        <>
+                          <div className="font-bold text-neutral-950">Premium Sedan</div>
+                          <div className="text-neutral-600">1–4 passengers — standard executive sedan option.</div>
+                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–4 Passengers</div>
+                        </>
+                      )}
+                      {vehicleCategory === 'Luxury SUV' && (
+                        <>
+                          <div className="font-bold text-neutral-950">Luxury SUV</div>
+                          <div className="text-neutral-600">1–6 passengers — premium SUV option.</div>
+                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–6 Passengers</div>
+                        </>
+                      )}
+                      {vehicleCategory === 'Innova / MPV Tier' && (
+                        <>
+                          <div className="font-bold text-neutral-950">Innova / MPV Tier</div>
+                          <div className="text-neutral-600">1–7 passengers — family and group transport option.</div>
+                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–7 Passengers</div>
+                        </>
+                      )}
+                      {vehicleCategory === 'Tempo Traveller Cruiser' && (
+                        <>
+                          <div className="font-bold text-neutral-950">Tempo Traveller Cruiser</div>
+                          <div className="text-neutral-600">8–20 passengers — large group transport option.</div>
+                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 8–20 Passengers</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Map Synced Pickup location preview/edit */}
