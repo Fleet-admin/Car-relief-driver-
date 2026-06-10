@@ -29,7 +29,6 @@ import {
 } from 'lucide-react';
 import { Inquiry, InquiryStatus, DashboardMetrics } from '../types';
 import { SupabaseService } from '../lib/supabase';
-import SQLGenerator from './SQLGenerator';
 
 // Helper to extract estimated fare configuration badges
 const parseEstimateDetails = (requirements: string | null) => {
@@ -549,8 +548,6 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
               </div>
             </div>
           </div>
-
-          <SQLGenerator />
         </div>
 
         {/* Right Inquiry list Column */}
