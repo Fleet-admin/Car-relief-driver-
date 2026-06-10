@@ -301,12 +301,6 @@ export default function App() {
                 </div>
               </section>
 
-              {/* SERVICES CARDS SECTION */}
-              <ServicesSection onSelectService={handleSelectServiceFromCard} />
-
-              {/* STATIC FLEET SHOWCASE */}
-              <FleetSection />
-
               {/* DETAILED INTERACTIVE Planner containing MAP and FORM */}
               <section
                 ref={formRef}
@@ -367,6 +361,16 @@ export default function App() {
                   />
                 </div>
               </section>
+
+              {/* SERVICES CARDS SECTION */}
+              <div className="pt-8 border-t border-neutral-200">
+                <ServicesSection onSelectService={handleSelectServiceFromCard} />
+              </div>
+
+              {/* STATIC FLEET SHOWCASE */}
+              <div className="pt-8 border-t border-neutral-200">
+                <FleetSection />
+              </div>
 
               {/* CORE CONTACT / FOOTER CHANNELS SECTION */}
               <section className="bg-white border border-neutral-200 rounded-2xl p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-8" id="contacts-pane">

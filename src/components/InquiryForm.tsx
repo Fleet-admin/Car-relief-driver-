@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
   Phone, 
@@ -71,17 +71,28 @@ export default function InquiryForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submissionSuccess, setSubmissionSuccess] = useState<any | null>(null);
 
-  // Configurable Pricing Formula States
-  const [baseFareSetting, setBaseFareSetting] = useState(15.00);
-  const [ratePerKmSetting, setRatePerKmSetting] = useState(2.20);
-  const [showPricingConfig, setShowPricingConfig] = useState(false);
-  const [multipliersSetting, setMultipliersSetting] = useState<Record<ServiceType, number>>({
-    'Fleet Booking': 1.5,
-    'Driver Relief': 1.0,
-    'Outstation Trip': 1.8,
-    'Wedding Booking': 2.5,
-    'Custom Requirement': 1.2,
-  });
+  // Configurable Pricing Formula States mapped via Admin Panel config
+  const fareConfigs = useMemo<Record<ServiceType, { base: number; rate: number }>>(() => {
+    const defaultConfigs: Record<ServiceType, { base: number; rate: number }> = {
+      'Fleet Booking': { base: 50.00, rate: 15.00 },
+      'Driver Relief': { base: 100.00, rate: 10.00 },
+      'Outstation Trip': { base: 150.00, rate: 12.00 },
+      'Wedding Booking': { base: 500.00, rate: 25.00 },
+      'Custom Requirement': { base: 200.00, rate: 18.00 },
+    };
+    try {
+      const saved = localStorage.getItem('admin_service_fares');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          return { ...defaultConfigs, ...parsed };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return defaultConfigs;
+  }, []);
 
   // Calculated distance states
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -152,13 +163,12 @@ export default function InquiryForm({
     };
   }, [pickupLoc?.lat, pickupLoc?.lng, dropLoc?.lat, dropLoc?.lng]);
 
-  // Pricing multiplier based on active service type
-  const activeMultiplier = multipliersSetting[serviceType] || 1.0;
+  // Pricing mapped from the active service type settings
+  const activeConfig = fareConfigs[serviceType] || { base: 50.00, rate: 15.00 };
   const routeDistance = distanceKm !== null ? distanceKm : 0.0;
   
-  // configurable price: base_fare + (distance_km * rate_per_km)
-  const basePriceCalculation = baseFareSetting + (routeDistance * ratePerKmSetting);
-  const estimatedFare = basePriceCalculation * activeMultiplier;
+  // Easy & simple formula: Base Fare + (Distance in KM * Rate per KM)
+  const estimatedFare = activeConfig.base + (routeDistance * activeConfig.rate);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,7 +192,7 @@ export default function InquiryForm({
 
     try {
       // Encode estimation spec to prepend to additional requirements
-      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Base: ₹${baseFareSetting.toFixed(2)} | Rate: ₹${ratePerKmSetting.toFixed(2)}/km | Multiplier: ${activeMultiplier.toFixed(1)}x (${serviceType}) | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
+      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Service: ${serviceType} | Base: ₹${activeConfig.base.toFixed(2)} | Rate: ₹${activeConfig.rate.toFixed(2)}/km | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
       
       const combinedNotes = additionalRequirements.trim()
         ? `${specificationBadge}\nCustomer Notes: ${additionalRequirements.trim()}`
@@ -393,15 +403,10 @@ export default function InquiryForm({
               {/* DYNAMIC INSTANT ESTIMATE BLOCK */}
               <div id="dynamic-fare-estimation-block" className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  {/* Dynamic formula configuration switcher button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowPricingConfig(!showPricingConfig)}
-                    className="flex items-center gap-1.5 text-[11px] text-neutral-500 hover:text-neutral-900 font-bold focus:outline-none transition-colors"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-neutral-400" />
-                    <span>{showPricingConfig ? 'Hide Formula Parameters' : 'Adjust Fare Formula Settings'}</span>
-                  </button>
+                  <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5 text-neutral-400" />
+                    Fare Calculation Reference
+                  </span>
 
                   {pickupLoc && dropLoc && (
                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1 font-mono">
@@ -410,73 +415,6 @@ export default function InquiryForm({
                     </span>
                   )}
                 </div>
-
-                {/* Collapsible Pricing Formula Configuration Panel */}
-                <AnimatePresence>
-                  {showPricingConfig && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 space-y-3 text-xs text-neutral-700 font-sans"
-                    >
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                            Base Fare (₹)
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.5}
-                            value={baseFareSetting}
-                            onChange={(e) => setBaseFareSetting(Math.max(0, parseFloat(e.target.value) || 0))}
-                            className="w-full px-2.5 py-1.5 border border-neutral-300 rounded-md bg-white text-xs text-neutral-800 font-mono focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5">
-                            Rate / Km (₹)
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={ratePerKmSetting}
-                            onChange={(e) => setRatePerKmSetting(Math.max(0, parseFloat(e.target.value) || 0))}
-                            className="w-full px-2.5 py-1.5 border border-neutral-300 rounded-md bg-white text-xs text-neutral-800 font-mono focus:outline-none focus:ring-1 focus:ring-neutral-900"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-neutral-200">
-                        <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-wider mb-2">
-                          Service-Based multipliers
-                        </label>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {Object.entries(multipliersSetting).map(([srv, val]) => (
-                            <div key={srv} className="p-1.5 bg-white border border-neutral-200 rounded-md flex items-center justify-between gap-1">
-                              <span className="text-[9px] font-bold text-neutral-500 truncate max-w-[80px]" title={srv}>
-                                {srv === 'Fleet Booking' ? 'Fleet' : srv === 'Driver Relief' ? 'Driver' : srv === 'Outstation Trip' ? 'Outstation' : srv === 'Wedding Booking' ? 'Wedding' : 'Custom'}
-                              </span>
-                              <input
-                                type="number"
-                                min={0.1}
-                                step={0.1}
-                                value={val}
-                                onChange={(e) => {
-                                  const nextVal = Math.max(0.1, parseFloat(e.target.value) || 1.0);
-                                  setMultipliersSetting((prev) => ({ ...prev, [srv]: nextVal }));
-                                }}
-                                className="w-12 text-right px-1 py-0.5 border border-neutral-250 rounded font-mono text-[10px] text-neutral-800 font-bold focus:outline-none"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
 
                 {/* Instant estimation breakdown receipt card */}
                 <div className="p-4 bg-neutral-950 text-white rounded-xl space-y-3 border border-neutral-800 shadow-md relative overflow-hidden font-sans">
@@ -495,8 +433,8 @@ export default function InquiryForm({
 
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between items-center text-neutral-400">
-                      <span>Base Fare Plan:</span>
-                      <span className="font-mono">₹{baseFareSetting.toFixed(2)}</span>
+                      <span>Base Fare Fee:</span>
+                      <span className="font-mono text-neutral-200">₹{activeConfig.base.toFixed(2)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-neutral-400">
@@ -508,17 +446,10 @@ export default function InquiryForm({
 
                     {distanceKm !== null && (
                       <div className="flex justify-between items-center text-neutral-400">
-                        <span>Distance cost ({distanceKm.toFixed(1)} km × ₹{ratePerKmSetting.toFixed(2)}):</span>
-                        <span className="font-mono">₹{(distanceKm * ratePerKmSetting).toFixed(2)}</span>
+                        <span>Distance cost ({distanceKm.toFixed(1)} km × ₹{activeConfig.rate.toFixed(2)}/km):</span>
+                        <span className="font-mono text-neutral-200">₹{(distanceKm * activeConfig.rate).toFixed(2)}</span>
                       </div>
                     )}
-
-                    <div className="flex justify-between items-center text-neutral-400">
-                      <span>Service multiplier ({serviceType}):</span>
-                      <span className="font-mono font-bold text-amber-300">
-                        {activeMultiplier.toFixed(1)}x
-                      </span>
-                    </div>
 
                     <div className="pt-2 border-t border-neutral-800 flex justify-between items-baseline">
                       <span className="text-xs font-bold text-neutral-300">Total Reference Quote:</span>

@@ -25,7 +25,9 @@ import {
   User,
   LogOut,
   BellRing,
-  RefreshCw
+  RefreshCw,
+  Coins,
+  Sliders
 } from 'lucide-react';
 import { Inquiry, InquiryStatus, DashboardMetrics } from '../types';
 import { SupabaseService } from '../lib/supabase';
@@ -92,6 +94,60 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
 
   // Sound enablement state
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Redesigned Simple Service Fare Mapping Configuration States
+  const [serviceFares, setServiceFares] = useState<Record<string, { base: number; rate: number }>>(() => {
+    const defaultConfigs: Record<string, { base: number; rate: number }> = {
+      'Fleet Booking': { base: 50.00, rate: 15.00 },
+      'Driver Relief': { base: 100.00, rate: 10.00 },
+      'Outstation Trip': { base: 150.00, rate: 12.00 },
+      'Wedding Booking': { base: 500.00, rate: 25.00 },
+      'Custom Requirement': { base: 200.00, rate: 18.00 },
+    };
+    try {
+      const saved = localStorage.getItem('admin_service_fares');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          return { ...defaultConfigs, ...parsed };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return defaultConfigs;
+  });
+
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+
+  const saveFareSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      localStorage.setItem('admin_service_fares', JSON.stringify(serviceFares));
+      setSaveSuccessMsg(true);
+      onNotifyTriggered('Fare formula mappings updated and synchronized successfully!');
+      setTimeout(() => setSaveSuccessMsg(false), 3000);
+    } catch (err: any) {
+      alert('Failed to save settings: ' + err.message);
+    }
+  };
+
+  const resetFareToDefaults = () => {
+    if (window.confirm('Do you want to reset all service fare configurations back to default system plans?')) {
+      const defaultConfigs = {
+        'Fleet Booking': { base: 50.00, rate: 15.00 },
+        'Driver Relief': { base: 100.00, rate: 10.00 },
+        'Outstation Trip': { base: 150.00, rate: 12.00 },
+        'Wedding Booking': { base: 500.00, rate: 25.00 },
+        'Custom Requirement': { base: 200.00, rate: 18.00 },
+      };
+      setServiceFares(defaultConfigs);
+      localStorage.setItem('admin_service_fares', JSON.stringify(defaultConfigs));
+      setSaveSuccessMsg(true);
+      onNotifyTriggered('Fare formula reset to standard defaults!');
+      setTimeout(() => setSaveSuccessMsg(false), 3000);
+    }
+  };
 
   // Load passcode state or keep lock simple
   const handleAuthSubmit = (e: React.FormEvent) => {
@@ -551,6 +607,120 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Admin Rate Mapping & Estimation Formula Configuration Panel */}
+          <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm space-y-4" id="admin-fare-formula-mapping-panel">
+            <div className="pb-3 border-b border-neutral-150 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-neutral-400" />
+                <h4 className="font-bold text-xs text-neutral-950 uppercase tracking-widest leading-none">Fare & Rate Mapping</h4>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold uppercase tracking-wide">
+                Config Desk
+              </span>
+            </div>
+
+            <p className="text-[11px] text-neutral-500 font-sans leading-normal">
+              Directly map the Base Fare (starting price) and Rate per KM for each individual service category.
+            </p>
+
+            <form onSubmit={saveFareSettings} className="space-y-4">
+              <div className="space-y-3.5">
+                {[
+                  { id: 'Fleet Booking', label: 'Car Booking Services (Fleet)' },
+                  { id: 'Driver Relief', label: 'Driver Relief Services' },
+                  { id: 'Outstation Trip', label: 'Outstation trips' },
+                  { id: 'Wedding Booking', label: 'Wedding / Events' },
+                  { id: 'Custom Requirement', label: 'Custom demands' },
+                ].map((srv) => {
+                  const currentSrvConfig = serviceFares[srv.id] || { base: 50.00, rate: 15.00 };
+                  return (
+                    <div key={srv.id} className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-neutral-800 font-sans">
+                          {srv.label}
+                        </span>
+                        <span className="text-[9px] text-neutral-400 font-mono">
+                          {srv.id}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                            Base Fee (₹)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={currentSrvConfig.base}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                setServiceFares(prev => ({
+                                  ...prev,
+                                  [srv.id]: { ...currentSrvConfig, base: val }
+                                }));
+                              }}
+                              className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                            Per KM Rate (₹)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.5}
+                              value={currentSrvConfig.rate}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                setServiceFares(prev => ({
+                                  ...prev,
+                                  [srv.id]: { ...currentSrvConfig, rate: val }
+                                }));
+                              }}
+                              className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {saveSuccessMsg && (
+                <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold text-center rounded-lg font-sans">
+                  ✓ Configurations Sync Success!
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  id="btn-admin-fare-reset"
+                  onClick={resetFareToDefaults}
+                  className="py-2 text-center text-neutral-500 hover:text-neutral-800 border border-neutral-250 bg-white rounded-xl text-[10px] font-bold uppercase transition hover:bg-neutral-50"
+                >
+                  Reset Defaults
+                </button>
+                <button
+                  type="submit"
+                  id="btn-admin-fare-save"
+                  className="py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition shadow-sm"
+                >
+                  Apply & Sync
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 
