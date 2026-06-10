@@ -344,30 +344,30 @@ export const SupabaseService = {
 
     if (supabaseClient) {
       try {
-        console.log('[Supabase Service] querySettings called for key: "service_fares" on system_settings');
+        console.log('[Supabase Service] querySettings called for key: "service_fares" on settings table');
         const { data, error } = await supabaseClient
-          .from('system_settings')
+          .from('settings')
           .select('value')
           .eq('key', 'service_fares')
           .maybeSingle();
 
         if (error) {
-          console.warn('[Supabase Service warning] Error fetching service_fares from system_settings table, trying settings fallback:', error);
+          console.warn('[Supabase Service warning] Error fetching service_fares from settings table, trying system_settings fallback:', error);
           const { data: altData, error: altError } = await supabaseClient
-            .from('settings')
+            .from('system_settings')
             .select('value')
             .eq('key', 'service_fares')
             .maybeSingle();
 
           if (altError) {
-            console.error('[Supabase Service error] Error fetching service_fares from settings fallback:', altError);
+            console.error('[Supabase Service error] Error fetching service_fares from system_settings fallback:', altError);
           } else if (altData && altData.value) {
-            console.log('[Supabase Service success] Loaded service_fares from fallback settings table', altData.value);
+            console.log('[Supabase Service success] Loaded service_fares from fallback system_settings table', altData.value);
             const parsed = typeof altData.value === 'string' ? JSON.parse(altData.value) : altData.value;
             return { ...defaultConfigs, ...parsed };
           }
         } else if (data && data.value) {
-          console.log('[Supabase Service success] Loaded service_fares from system_settings table', data.value);
+          console.log('[Supabase Service success] Loaded service_fares from settings table', data.value);
           const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
           return { ...defaultConfigs, ...parsed };
         }
@@ -398,12 +398,12 @@ export const SupabaseService = {
       console.error('Failed to save service_fares locally:', e);
     }
 
-    // 2. Save to Supabase system_settings table if configured
+    // 2. Save to Supabase settings table if configured
     if (supabaseClient) {
       try {
-        console.log('[Supabase Service] upserting to system_settings table: key: "service_fares"');
+        console.log('[Supabase Service] upserting to settings table: key: "service_fares"');
         const { error } = await supabaseClient
-          .from('system_settings')
+          .from('settings')
           .upsert({
             key: 'service_fares',
             value: fares,
@@ -411,9 +411,9 @@ export const SupabaseService = {
           }, { onConflict: 'key' });
 
         if (error) {
-          console.warn('[Supabase Service warning] Failed to upsert service_fares to system_settings, trying fallback settings table:', error);
+          console.warn('[Supabase Service warning] Failed to upsert service_fares to settings table, trying system_settings fallback:', error);
           const { error: altError } = await supabaseClient
-            .from('settings')
+            .from('system_settings')
             .upsert({
               key: 'service_fares',
               value: fares,
@@ -421,7 +421,7 @@ export const SupabaseService = {
             }, { onConflict: 'key' });
 
           if (altError) {
-            console.error('[Supabase Service error] Failed to upsert service_fares to settings table fallback either:', altError);
+            console.error('[Supabase Service error] Failed to upsert service_fares to system_settings table fallback either:', altError);
             throw altError;
           }
         }
