@@ -64,9 +64,10 @@ const parseEstimateDetails = (requirements: string | null) => {
 
 interface AdminDashboardProps {
   onNotifyTriggered: (message: string) => void;
+  onLogout?: () => void;
 }
 
-export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProps) {
+export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDashboardProps) {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -363,6 +364,9 @@ export default function AdminDashboard({ onNotifyTriggered }: AdminDashboardProp
             onClick={() => {
               setIsAuthenticated(false);
               localStorage.removeItem('admin_authenticated');
+              if (onLogout) {
+                onLogout();
+              }
             }}
             id="btn-admin-logout"
             className="p-2 border border-neutral-200 bg-white hover:bg-red-50 hover:text-red-600 rounded-xl transition text-neutral-500"

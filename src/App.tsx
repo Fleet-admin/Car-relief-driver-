@@ -41,8 +41,45 @@ interface LocationData {
 }
 
 export default function App() {
-  // Navigation: 'client' or 'admin'
-  const [activeTab, setActiveTab] = useState<'client' | 'admin'>('client');
+  // Navigation: 'client' or 'admin' (persisted across page refreshes)
+  const [activeTab, setActiveTab] = useState<'client' | 'admin'>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      if (tabParam === 'admin' || tabParam === 'client') {
+        return tabParam;
+      }
+      const savedTab = localStorage.getItem('active_tab');
+      if (savedTab === 'admin' || savedTab === 'client') {
+        return savedTab;
+      }
+    }
+    return 'client';
+  });
+
+  const setActiveTabPersisted = (tab: 'client' | 'admin') => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('active_tab', tab);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handlePopState = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam === 'admin' || tabParam === 'client') {
+          setActiveTab(tabParam);
+        }
+      };
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, []);
 
   // Map state
   const [pickupLoc, setPickupLoc] = useState<LocationData | null>(null);
@@ -103,7 +140,7 @@ export default function App() {
       <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <button
-            onClick={() => setActiveTab('client')}
+            onClick={() => setActiveTabPersisted('client')}
             className="flex items-center gap-2 text-left group"
           >
             <div className="p-2.5 bg-neutral-900 text-white rounded-xl shadow-md group-hover:bg-[#10B981] transition-all">
@@ -123,7 +160,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                setActiveTab('client');
+                setActiveTabPersisted('client');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               id="header-nav-client"
@@ -137,7 +174,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setActiveTab('admin')}
+              onClick={() => setActiveTabPersisted('admin')}
               id="header-nav-admin"
               className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
                 activeTab === 'admin'
@@ -388,7 +425,13 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <AdminDashboard onNotifyTriggered={triggerGlobalToast} />
+              <AdminDashboard 
+                onNotifyTriggered={triggerGlobalToast} 
+                onLogout={() => {
+                  setActiveTabPersisted('client');
+                  triggerGlobalToast('Successfully logged out of the dynamic admin session.');
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
