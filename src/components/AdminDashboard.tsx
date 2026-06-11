@@ -30,7 +30,7 @@ import {
   Coins,
   Sliders
 } from 'lucide-react';
-import { Inquiry, InquiryStatus, DashboardMetrics } from '../types';
+import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
 
 // Helper to extract estimated fare configuration badges
@@ -96,21 +96,23 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   // Sound enablement state
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Redesigned Simple Service Fare Mapping Configuration States
-  const [serviceFares, setServiceFares] = useState<Record<string, { base: number; rate: number }>>(() => {
-    const defaultConfigs: Record<string, { base: number; rate: number }> = {
-      'Fleet Booking': { base: 50.00, rate: 15.00 },
-      'Driver Relief': { base: 100.00, rate: 10.00 },
-      'Outstation Trip': { base: 150.00, rate: 12.00 },
-      'Wedding Booking': { base: 500.00, rate: 25.00 },
-      'Custom Requirement': { base: 200.00, rate: 18.00 },
-    };
+  // Robust Vehicle Category pricing configurations
+  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>(() => {
+    const defaultConfigs: VehicleCategory[] = [
+      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
+      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
+      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
+      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
+      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
+      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
+      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+    ];
     try {
-      const saved = localStorage.getItem('admin_service_fares');
+      const saved = localStorage.getItem('admin_vehicle_categories');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed) {
-          return { ...defaultConfigs, ...parsed };
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
     } catch {
@@ -125,12 +127,12 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const saveFareSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const ok = await SupabaseService.saveServiceFares(serviceFares);
+      const ok = await SupabaseService.saveVehicleCategories(vehicleCategories);
       setSaveSuccessMsg(true);
       if (ok) {
-        onNotifyTriggered('Fare formula updated and saved to Supabase database successfully!');
+        onNotifyTriggered('Vehicle Category Pricing updated and saved to Supabase successfully!');
       } else {
-        onNotifyTriggered('Fare formula updated locally, but Supabase connection failed.');
+        onNotifyTriggered('Vehicle Category Pricing updated locally, but Supabase connection failed.');
       }
       setTimeout(() => setSaveSuccessMsg(false), 3000);
     } catch (err: any) {
@@ -139,23 +141,55 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   };
 
   const resetFareToDefaults = async () => {
-    if (window.confirm('Do you want to reset all service fare configurations back to default system plans? This will overwrite the live database settings.')) {
-      const defaultConfigs = {
-        'Fleet Booking': { base: 50.00, rate: 15.000 },
-        'Driver Relief': { base: 100.00, rate: 10.00 },
-        'Outstation Trip': { base: 150.00, rate: 12.00 },
-        'Wedding Booking': { base: 500.00, rate: 25.00 },
-        'Custom Requirement': { base: 200.00, rate: 18.00 },
-      };
-      setServiceFares(defaultConfigs);
-      const ok = await SupabaseService.saveServiceFares(defaultConfigs);
+    if (window.confirm('Do you want to reset all vehicle pricing categories back to system standard plans? This will overwrite live database settings.')) {
+      const defaultConfigs: VehicleCategory[] = [
+        { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
+        { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
+        { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
+        { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
+        { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
+        { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
+        { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+      ];
+      setVehicleCategories(defaultConfigs);
+      const ok = await SupabaseService.saveVehicleCategories(defaultConfigs);
       setSaveSuccessMsg(true);
       if (ok) {
-        onNotifyTriggered('Fare formula reset to standard defaults in Supabase!');
+        onNotifyTriggered('Vehicle pricing categories reset to defaults in Supabase!');
       } else {
-        onNotifyTriggered('Fare formula reset to standard defaults locally!');
+        onNotifyTriggered('Vehicle pricing categories reset to defaults locally!');
       }
       setTimeout(() => setSaveSuccessMsg(false), 3000);
+    }
+  };
+
+  const handleAddNewCategory = () => {
+    const name = window.prompt("Enter the name of the new Vehicle Category (e.g. Luxury Minivan):");
+    if (!name || !name.trim()) return;
+    
+    // Check if duplicate name
+    if (vehicleCategories.some(cat => cat.name.toLowerCase() === name.trim().toLowerCase())) {
+      alert("A category with this name already exists.");
+      return;
+    }
+
+    const newCat: VehicleCategory = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      base_fare: 150.00,
+      per_km_rate: 12.00,
+      minimum_fare: 150.00,
+      active: true
+    };
+
+    setVehicleCategories(prev => [...prev, newCat]);
+    onNotifyTriggered(`New vehicle category "${newCat.name}" added locally! Click Apply to save.`);
+  };
+
+  const handleDeleteCategory = (catIdOrName: string) => {
+    if (window.confirm("Are you sure you want to remove this vehicle category? This cannot be undone.")) {
+      setVehicleCategories(prev => prev.filter(c => c.id !== catIdOrName && c.name !== catIdOrName));
+      onNotifyTriggered("Vehicle category deleted! Click Apply to save Changes.");
     }
   };
 
@@ -228,8 +262,8 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       const data = await SupabaseService.queryInquiries();
       setInquiries(data);
       
-      const fares = await SupabaseService.getServiceFares();
-      setServiceFares(fares);
+      const cats = await SupabaseService.getVehicleCategories();
+      setVehicleCategories(cats);
     } catch (err: any) {
       setErrorText(err?.message || 'Database lookup query failed. Check SQL tables schema.');
     } finally {
@@ -623,7 +657,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           </div>
 
           {/* Admin Rate Mapping & Estimation Formula Configuration Panel */}
-          <div className={`bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm transition-all duration-300 ${isFareMappingExpanded ? 'space-y-4' : 'space-y-0.5'}`} id="admin-fare-formula-mapping-panel">
+          <div className={`bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm transition-all duration-300 ${isFareMappingExpanded ? 'space-y-4' : 'space-y-0.5'}`} id="admin-vehicle-fare-pricing-panel">
             <button
               type="button"
               onClick={() => setIsFareMappingExpanded(!isFareMappingExpanded)}
@@ -633,91 +667,140 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
               <div className="flex items-center gap-1.5">
                 <Sliders className="w-4 h-4 text-neutral-400" />
                 <h4 className="font-bold text-xs text-neutral-950 uppercase tracking-widest leading-none select-none">
-                  Fare & Rate Mapping {isFareMappingExpanded ? '▲' : '▼'}
+                  Vehicle Category Pricing {isFareMappingExpanded ? '▲' : '▼'}
                 </h4>
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold uppercase tracking-wide shrink-0">
-                Config Desk
+              <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-950 text-white font-bold uppercase tracking-wide shrink-0 font-sans">
+                Master Pricing Panel
               </span>
             </button>
 
             <AnimatePresence initial={false}>
               {isFareMappingExpanded && (
                 <motion.div
-                  key="fare-rate-mapping-content"
+                  key="vehicle-category-pricing-content"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25, ease: 'easeInOut' }}
                   className="overflow-hidden space-y-4 pt-3.5"
                 >
-                  <p className="text-[11px] text-neutral-500 font-sans leading-normal">
-                    Directly map the Base Fare (starting price) and Rate per KM for each individual service category.
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-neutral-500 font-sans leading-normal">
+                      Directly map pricing formulas (Base Fare, rate per KM, and Minimum Fare) and status for every active vehicle category.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddNewCategory}
+                      className="px-2.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg whitespace-nowrap transition"
+                    >
+                      + Add Category
+                    </button>
+                  </div>
 
                   <form onSubmit={saveFareSettings} className="space-y-4">
                     <div className="space-y-3.5">
-                      {[
-                        { id: 'Fleet Booking', label: 'Car Booking Services (Fleet)' },
-                        { id: 'Driver Relief', label: 'Driver Relief Services' },
-                        { id: 'Outstation Trip', label: 'Outstation trips' },
-                        { id: 'Wedding Booking', label: 'Wedding / Events' },
-                        { id: 'Custom Requirement', label: 'Custom demands' },
-                      ].map((srv) => {
-                        const currentSrvConfig = serviceFares[srv.id] || { base: 50.00, rate: 15.00 };
+                      {vehicleCategories.map((cat, idx) => {
                         return (
-                          <div key={srv.id} className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-neutral-800 font-sans">
-                                {srv.label}
-                              </span>
-                              <span className="text-[9px] text-neutral-400 font-mono">
-                                {srv.id}
-                              </span>
+                          <div key={cat.id || cat.name} className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-3">
+                            <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-neutral-150">
+                              <div className="flex-1">
+                                <input
+                                  type="text"
+                                  value={cat.name}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, name: val } : c));
+                                  }}
+                                  className="text-xs font-bold text-neutral-800 bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-neutral-950 focus:outline-none py-0.5 px-0.5 max-w-[180px]"
+                                  title="Click to rename category name"
+                                  required
+                                />
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {/* Toggle Active/Inactive */}
+                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={cat.active}
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, active: checked } : c));
+                                    }}
+                                    className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-950 w-3.5 h-3.5"
+                                  />
+                                  <span className={`text-[10px] font-bold uppercase font-sans ${cat.active ? 'text-emerald-700' : 'text-neutral-400'}`}>
+                                    {cat.active ? 'Active' : 'Inactive'}
+                                  </span>
+                                </label>
+                                {/* Delete action button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(cat.id || cat.name)}
+                                  className="text-neutral-400 hover:text-red-600 transition p-0.5"
+                                  title="Delete Vehicle Category"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                               <div>
-                                <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
                                   Base Fee (₹)
                                 </label>
                                 <div className="relative">
-                                  <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
                                   <input
                                     type="number"
                                     min={0}
                                     step={1}
-                                    value={currentSrvConfig.base}
+                                    value={cat.base_fare}
                                     onChange={(e) => {
                                       const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                      setServiceFares(prev => ({
-                                        ...prev,
-                                        [srv.id]: { ...currentSrvConfig, base: val }
-                                      }));
+                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, base_fare: val } : c));
                                     }}
-                                    className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
                                   />
                                 </div>
                               </div>
 
                               <div>
-                                <label className="block text-[9px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Per KM Rate (₹)
+                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                  Rate / KM (₹)
                                 </label>
                                 <div className="relative">
-                                  <span className="absolute left-2.5 top-1.5 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
                                   <input
                                     type="number"
                                     min={0}
                                     step={0.5}
-                                    value={currentSrvConfig.rate}
+                                    value={cat.per_km_rate}
                                     onChange={(e) => {
                                       const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                      setServiceFares(prev => ({
-                                        ...prev,
-                                        [srv.id]: { ...currentSrvConfig, rate: val }
-                                      }));
+                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, per_km_rate: val } : c));
                                     }}
-                                    className="w-full pl-5 pr-1.5 py-1 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                  Min Fare (₹)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={cat.minimum_fare || 0}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, minimum_fare: val } : c));
+                                    }}
+                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
                                   />
                                 </div>
                               </div>

@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Inquiry, InquiryStatus, ServiceType } from '../types';
+import { Inquiry, InquiryStatus, ServiceType, VehicleCategory } from '../types';
 
 // Read configuration from environment variables
 const getSupabaseConfig = () => {
@@ -434,6 +434,91 @@ export const SupabaseService = {
         return false;
       }
     }
+    return true;
+  },
+
+  async getVehicleCategories(): Promise<VehicleCategory[]> {
+    const defaultConfigs: VehicleCategory[] = [
+      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
+      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
+      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
+      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
+      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
+      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
+      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+    ];
+
+    if (supabaseClient) {
+      try {
+        console.log('[Supabase Service] query fetch called for table "vehicle_categories"');
+        const { data, error } = await supabaseClient
+          .from('vehicle_categories')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.warn('[Supabase Service warning] Error querying vehicle_categories table, using fallback:', error);
+        } else if (data && data.length > 0) {
+          console.log('[Supabase Service success] Loaded vehicle categories from live table', data);
+          return data as VehicleCategory[];
+        }
+      } catch (err) {
+        console.warn('[Supabase Service Warn] Exception querying vehicle_categories table:', err);
+      }
+    }
+
+    // Try localStorage
+    try {
+      const saved = localStorage.getItem('admin_vehicle_categories');
+      if (saved) {
+        return JSON.parse(saved) as VehicleCategory[];
+      }
+    } catch {
+      // ignore
+    }
+
+    return defaultConfigs;
+  },
+
+  async saveVehicleCategories(categories: VehicleCategory[]): Promise<boolean> {
+    try {
+      localStorage.setItem('admin_vehicle_categories', JSON.stringify(categories));
+      window.dispatchEvent(new CustomEvent('supabase-vehicle-categories-updated', { detail: categories }));
+    } catch (e) {
+      console.error('Failed to save vehicle categories locally:', e);
+    }
+
+    if (supabaseClient) {
+      try {
+        console.log('[Supabase Service] Saving vehicle categories to public.vehicle_categories table...');
+        
+        const payload = categories.map(cat => ({
+          id: cat.id || crypto.randomUUID(),
+          name: cat.name,
+          base_fare: cat.base_fare,
+          per_km_rate: cat.per_km_rate,
+          minimum_fare: cat.minimum_fare,
+          active: cat.active,
+          updated_at: new Date().toISOString()
+        }));
+
+        const { error } = await supabaseClient
+          .from('vehicle_categories')
+          .upsert(payload, { onConflict: 'name' });
+
+        if (error) {
+          console.warn('[Supabase Service warning] Failed to upsert vehicle categories in database:', error);
+          return false;
+        }
+
+        console.log('[Supabase Service success] Saved vehicle categories to database successfully.');
+        return true;
+      } catch (err: any) {
+        console.error('[Supabase Service fail] saveVehicleCategories exception:', err);
+        return false;
+      }
+    }
+
     return true;
   },
 };

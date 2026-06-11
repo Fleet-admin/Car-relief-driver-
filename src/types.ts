@@ -30,6 +30,17 @@ export interface Inquiry {
   vehicle_category?: string | null;
 }
 
+export interface VehicleCategory {
+  id?: string;
+  name: string;
+  base_fare: number;
+  per_km_rate: number;
+  minimum_fare: number;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface DashboardMetrics {
   total: number;
   new: number;

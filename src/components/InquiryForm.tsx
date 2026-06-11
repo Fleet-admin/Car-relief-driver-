@@ -20,7 +20,7 @@ import {
   Info,
   Car
 } from 'lucide-react';
-import { ServiceType } from '../types';
+import { ServiceType, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -73,21 +73,23 @@ export default function InquiryForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submissionSuccess, setSubmissionSuccess] = useState<any | null>(null);
 
-  // Configurable Pricing Formula States mapped via Admin Panel config
-  const [fareConfigs, setFareConfigs] = useState<Record<ServiceType, { base: number; rate: number }>>(() => {
-    const defaultConfigs: Record<ServiceType, { base: number; rate: number }> = {
-      'Fleet Booking': { base: 50.00, rate: 15.00 },
-      'Driver Relief': { base: 100.00, rate: 10.00 },
-      'Outstation Trip': { base: 150.00, rate: 12.00 },
-      'Wedding Booking': { base: 500.00, rate: 25.00 },
-      'Custom Requirement': { base: 200.00, rate: 18.00 },
-    };
+  // Configurable Vehicle Pricing Categories mapped via Admin Panel config
+  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>(() => {
+    const defaultConfigs: VehicleCategory[] = [
+      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
+      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
+      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
+      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
+      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
+      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
+      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+    ];
     try {
-      const saved = localStorage.getItem('admin_service_fares');
+      const saved = localStorage.getItem('admin_vehicle_categories');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed) {
-          return { ...defaultConfigs, ...parsed };
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
     } catch {
@@ -99,17 +101,17 @@ export default function InquiryForm({
   // Pull live values from Supabase on load
   useEffect(() => {
     let active = true;
-    const loadFares = async () => {
+    const loadCategories = async () => {
       try {
-        const liveFares = await SupabaseService.getServiceFares();
-        if (active && liveFares) {
-          setFareConfigs(liveFares as any);
+        const liveCats = await SupabaseService.getVehicleCategories();
+        if (active && liveCats && liveCats.length > 0) {
+          setVehicleCategories(liveCats);
         }
       } catch (err) {
-        console.warn('Failed to load live fare configs from Supabase, staying with local fallback:', err);
+        console.warn('Failed to load live vehicle categories from Supabase, staying with local fallback:', err);
       }
     };
-    loadFares();
+    loadCategories();
     return () => {
       active = false;
     };
@@ -118,14 +120,14 @@ export default function InquiryForm({
   // Listen to live database rate change events
   useEffect(() => {
     const handleSettingsUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<Record<ServiceType, { base: number; rate: number }>>;
-      if (customEvent.detail) {
-        setFareConfigs(customEvent.detail);
+      const customEvent = e as CustomEvent<VehicleCategory[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setVehicleCategories(customEvent.detail);
       }
     };
-    window.addEventListener('supabase-settings-updated', handleSettingsUpdate);
+    window.addEventListener('supabase-vehicle-categories-updated', handleSettingsUpdate);
     return () => {
-      window.removeEventListener('supabase-settings-updated', handleSettingsUpdate);
+      window.removeEventListener('supabase-vehicle-categories-updated', handleSettingsUpdate);
     };
   }, []);
 
@@ -198,12 +200,21 @@ export default function InquiryForm({
     };
   }, [pickupLoc?.lat, pickupLoc?.lng, dropLoc?.lat, dropLoc?.lng]);
 
-  // Pricing mapped from the active service type settings
-  const activeConfig = fareConfigs[serviceType] || { base: 50.00, rate: 15.00 };
   const routeDistance = distanceKm !== null ? distanceKm : 0.0;
-  
-  // Easy & simple formula: Base Fare + (Distance in KM * Rate per KM)
-  const estimatedFare = activeConfig.base + (routeDistance * activeConfig.rate);
+
+  // Pricing mapped from the active vehicle category settings
+  const selectedCategoryConfig = useMemo(() => {
+    return vehicleCategories.find(
+      (cat) => cat.name.toLowerCase() === vehicleCategory.toLowerCase() && cat.active
+    );
+  }, [vehicleCategories, vehicleCategory]);
+
+  // Easy & simple formula: Base Fare + (Distance in KM * Rate per KM) with minimum fare enforcement
+  const estimatedFare = useMemo(() => {
+    if (!selectedCategoryConfig) return 0.0;
+    const calc = selectedCategoryConfig.base_fare + (routeDistance * selectedCategoryConfig.per_km_rate);
+    return Math.max(calc, selectedCategoryConfig.minimum_fare || 0);
+  }, [selectedCategoryConfig, routeDistance]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,7 +242,9 @@ export default function InquiryForm({
 
     try {
       // Encode estimation spec to prepend to additional requirements
-      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Service: ${serviceType} | Vehicle: ${vehicleCategory} | Base: ₹${activeConfig.base.toFixed(2)} | Rate: ₹${activeConfig.rate.toFixed(2)}/km | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
+      const baseFee = selectedCategoryConfig ? selectedCategoryConfig.base_fare : 0.0;
+      const kmRate = selectedCategoryConfig ? selectedCategoryConfig.per_km_rate : 0.0;
+      const specificationBadge = `[ESTIMATE DETAILS - Distance: ${routeDistance.toFixed(2)} km | Service: ${serviceType} | Vehicle: ${vehicleCategory} | Base: ₹${baseFee.toFixed(2)} | Rate: ₹${kmRate.toFixed(2)}/km | Estimated Fare: ₹${estimatedFare.toFixed(2)}]`;
       
       const combinedNotes = additionalRequirements.trim()
         ? `${specificationBadge}\nCustomer Notes: ${additionalRequirements.trim()}`
@@ -415,10 +428,11 @@ export default function InquiryForm({
                   className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition"
                 >
                   <option value="">Choose your preferred vehicle category</option>
-                  <option value="Premium Sedan">Premium Sedan</option>
-                  <option value="Luxury SUV">Luxury SUV</option>
-                  <option value="Innova / MPV Tier">Innova / MPV Tier</option>
-                  <option value="Tempo Traveller Cruiser">Tempo Traveller Cruiser</option>
+                  {vehicleCategories.filter(cat => cat.active).map(cat => (
+                    <option key={cat.id || cat.name} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
                 </select>
 
                 {/* Optional description display note */}
@@ -426,34 +440,73 @@ export default function InquiryForm({
                   <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-neutral-800 transition-all">
                     <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      {vehicleCategory === 'Premium Sedan' && (
-                        <>
-                          <div className="font-bold text-neutral-950">Premium Sedan</div>
-                          <div className="text-neutral-600">1–4 passengers — standard executive sedan option.</div>
-                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–4 Passengers</div>
-                        </>
-                      )}
-                      {vehicleCategory === 'Luxury SUV' && (
-                        <>
-                          <div className="font-bold text-neutral-950">Luxury SUV</div>
-                          <div className="text-neutral-600">1–6 passengers — premium SUV option.</div>
-                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–6 Passengers</div>
-                        </>
-                      )}
-                      {vehicleCategory === 'Innova / MPV Tier' && (
-                        <>
-                          <div className="font-bold text-neutral-950">Innova / MPV Tier</div>
-                          <div className="text-neutral-600">1–7 passengers — family and group transport option.</div>
-                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–7 Passengers</div>
-                        </>
-                      )}
-                      {vehicleCategory === 'Tempo Traveller Cruiser' && (
-                        <>
-                          <div className="font-bold text-neutral-950">Tempo Traveller Cruiser</div>
-                          <div className="text-neutral-600">8–20 passengers — large group transport option.</div>
-                          <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 8–20 Passengers</div>
-                        </>
-                      )}
+                      {(() => {
+                        if (vehicleCategory === 'Premium Sedan') {
+                          return (
+                            <>
+                              <div className="font-bold text-neutral-950">Premium Sedan</div>
+                              <div className="text-neutral-600">1–4 passengers — standard executive sedan option.</div>
+                              <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–4 Passengers</div>
+                            </>
+                          );
+                        }
+                        if (vehicleCategory === 'Luxury SUV') {
+                          return (
+                            <>
+                              <div className="font-bold text-neutral-950">Luxury SUV</div>
+                              <div className="text-neutral-600">1–6 passengers — premium SUV option.</div>
+                              <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–6 Passengers</div>
+                            </>
+                          );
+                        }
+                        if (vehicleCategory === 'Innova / MPV Tier') {
+                          return (
+                            <>
+                              <div className="font-bold text-neutral-950">Innova / MPV Tier</div>
+                              <div className="text-neutral-600">1–7 passengers — family and group transport option.</div>
+                              <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 1–7 Passengers</div>
+                            </>
+                          );
+                        }
+                        if (vehicleCategory === 'Tempo Traveller Cruiser') {
+                          return (
+                            <>
+                              <div className="font-bold text-neutral-950">Tempo Traveller Cruiser</div>
+                              <div className="text-neutral-600">8–20 passengers — large group transport option.</div>
+                              <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: 8–20 Passengers</div>
+                            </>
+                          );
+                        }
+
+                        // For dynamic newly added ones or other categories
+                        const nameLower = vehicleCategory.toLowerCase();
+                        let desc = "Comfortable transport option.";
+                        let capacity = "1–4 Passengers";
+                        if (nameLower.includes('hatchback')) {
+                          desc = "Comfortable compact hatchback option.";
+                          capacity = "1–4 Passengers";
+                        } else if (nameLower.includes('sedan')) {
+                          desc = "Standard comfort sedan option.";
+                          capacity = "1–4 Passengers";
+                        } else if (nameLower.includes('suv')) {
+                          desc = "Spacious utility vehicle option.";
+                          capacity = "1–6 Passengers";
+                        } else if (nameLower.includes('mpv') || nameLower.includes('innova')) {
+                          desc = "Premium group MPV option.";
+                          capacity = "1–7 Passengers";
+                        } else if (nameLower.includes('tempo') || nameLower.includes('traveller')) {
+                          desc = "Large luxury group traveler options.";
+                          capacity = "8–20 Passengers";
+                        }
+
+                        return (
+                          <>
+                            <div className="font-bold text-neutral-950">{vehicleCategory}</div>
+                            <div className="text-neutral-600">{desc}</div>
+                            <div className="text-neutral-900 font-bold mt-1">Recommended Capacity: {capacity}</div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -533,7 +586,7 @@ export default function InquiryForm({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between items-center text-neutral-400">
                       <span>Base Fare Fee:</span>
-                      <span className="font-mono text-neutral-200">₹{activeConfig.base.toFixed(2)}</span>
+                      <span className="font-mono text-neutral-200">₹{(selectedCategoryConfig?.base_fare || 0.0).toFixed(2)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-neutral-400">
@@ -545,8 +598,15 @@ export default function InquiryForm({
 
                     {distanceKm !== null && (
                       <div className="flex justify-between items-center text-neutral-400">
-                        <span>Distance cost ({distanceKm.toFixed(1)} km × ₹{activeConfig.rate.toFixed(2)}/km):</span>
-                        <span className="font-mono text-neutral-200">₹{(distanceKm * activeConfig.rate).toFixed(2)}</span>
+                        <span>Distance cost ({distanceKm.toFixed(1)} km × ₹{(selectedCategoryConfig?.per_km_rate || 0.0).toFixed(2)}/km):</span>
+                        <span className="font-mono text-neutral-200">₹{(distanceKm * (selectedCategoryConfig?.per_km_rate || 0.0)).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {selectedCategoryConfig && selectedCategoryConfig.minimum_fare && estimatedFare === selectedCategoryConfig.minimum_fare && (
+                      <div className="flex justify-between items-center text-amber-400 text-[10px]">
+                        <span>Minimum Fare Enforced:</span>
+                        <span className="font-mono">₹{selectedCategoryConfig.minimum_fare.toFixed(2)}</span>
                       </div>
                     )}
 
