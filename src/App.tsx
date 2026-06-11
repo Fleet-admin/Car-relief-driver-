@@ -1061,23 +1061,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Global Brand Footer informational credentials */}
-      <footer className="bg-neutral-900 text-neutral-400 mt-16 border-t border-neutral-800 text-center py-8 px-4 font-mono text-[11px]" id="app-footer">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="leading-relaxed">
-            &copy; 2026 Car & Driver Relief Services. Developed with full type-safety and durable secure cloud integrations.
-          </p>
 
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 font-bold uppercase">
-              Build Version 1.1.0 PWA
-            </span>
-            <span className="text-[10px] text-[#10B981] font-bold">
-              ● All Systems Live
-            </span>
-          </div>
-        </div>
-      </footer>
 
       {/* Embedded support operator drawer bubble */}
       <FloatingWhatsApp
