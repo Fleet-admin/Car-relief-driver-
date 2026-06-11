@@ -420,7 +420,6 @@ export default function InquiryForm({
                   <option value="Driver Relief Services">Driver Relief Services</option>
                   <option value="Outstation Trip">Outstation Trips</option>
                   <option value="Wedding Plan">Wedding Plan / Event Bookings</option>
-                  <option value="Premium Logistics Temporary">Premium Logistics Temporary</option>
                   <option value="Custom Requirement">Custom Requirements</option>
                 </select>
               </div>

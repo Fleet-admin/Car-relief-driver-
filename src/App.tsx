@@ -246,7 +246,6 @@ export default function App() {
     { key: 'home', label: 'Home', icon: Home },
     { key: 'fleet', label: 'Fleet Categories', icon: Car },
     { key: 'drivers', label: 'Driver Relief Services', icon: ShieldCheck },
-    { key: 'logistics', label: 'Premium Logistics', icon: Truck },
     { key: 'about', label: 'About Us', icon: Info },
     { key: 'contact', label: 'Contact', icon: Mail },
   ];
@@ -845,89 +844,6 @@ export default function App() {
                         <div className="mt-6 text-[10px] text-center text-neutral-500 italic">
                           Compliance standard: CDRS Certified v4.2
                         </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Premium Logistics View */}
-                {activeNav === 'logistics' && (
-                  <motion.div
-                    key="nav-logistics"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.15 }}
-                    className="space-y-8"
-                  >
-                    <div className="text-center max-w-3xl mx-auto py-4">
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-[#10B981] bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                        Supply Logistics
-                      </span>
-                      <h3 className="text-3xl font-extrabold text-neutral-950 tracking-tight mt-3">
-                        Premium Temporal Logistics
-                      </h3>
-                      <p className="text-xs text-neutral-500 mt-2 font-sans max-w-xl mx-auto">
-                        Scale courier routing, corporate logistics, employee commutes, and high-value physical cargo distributions with vetted vehicle operators.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                      {/* Logistics services */}
-                      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between" id="logistics-courier">
-                        <div className="space-y-3">
-                          <div className="p-2.5 bg-neutral-900 text-emerald-400 rounded-xl w-fit">
-                            <Truck className="w-5 h-5" />
-                          </div>
-                          <h4 className="font-bold text-base text-neutral-950">Logistics Services</h4>
-                          <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-                            White-glove courier dispatches, priority team distribution networks, legal and medical parcel transits, and sensitive business paperwork handling.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleSelectServiceFromCard('Premium Logistics Temporary')}
-                          className="mt-5 w-full py-2 text-center text-[11px] font-bold bg-neutral-950 text-white rounded-lg hover:bg-neutral-800 transition"
-                        >
-                          Request Logistics Quote
-                        </button>
-                      </div>
-
-                      {/* Corporate transport */}
-                      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between" id="logistics-corporate">
-                        <div className="space-y-3">
-                          <div className="p-2.5 bg-neutral-900 text-emerald-400 rounded-xl w-fit">
-                            <Compass className="w-5 h-5" />
-                          </div>
-                          <h4 className="font-bold text-base text-neutral-950">Corporate Transport</h4>
-                          <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-                            Structured employee routes rosters, inter-state operational office lines, recurring executive transit contracts, and bulk corporate vehicle dispatch operations.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleSelectServiceFromCard('Premium Logistics Temporary')}
-                          className="mt-5 w-full py-2 text-center text-[11px] font-bold bg-neutral-950 text-white rounded-lg hover:bg-neutral-800 transition"
-                        >
-                          Configure Corporate Transit
-                        </button>
-                      </div>
-
-                      {/* Cargo solutions */}
-                      <div className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between" id="logistics-cargo">
-                        <div className="space-y-3">
-                          <div className="p-2.5 bg-neutral-900 text-emerald-400 rounded-xl w-fit">
-                            <Layers className="w-5 h-5" />
-                          </div>
-                          <h4 className="font-bold text-base text-neutral-950">Cargo Solutions</h4>
-                          <p className="text-xs text-neutral-500 font-sans leading-relaxed">
-                            Vetted cargo pilots, high-asset courier escrow containment, temperature-controlled fleet distribution backups, and peak business seasonal cargo relief support.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleSelectServiceFromCard('Premium Logistics Temporary')}
-                          className="mt-5 w-full py-2 text-center text-[11px] font-bold bg-neutral-950 text-white rounded-lg hover:bg-neutral-800 transition"
-                        >
-                          Inquire for Cargo Escort
-                        </button>
                       </div>
                     </div>
                   </motion.div>
