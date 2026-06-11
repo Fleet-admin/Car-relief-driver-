@@ -480,17 +480,11 @@ export const SupabaseService = {
     return defaultConfigs;
   },
 
-  async saveVehicleCategories(categories: VehicleCategory[]): Promise<boolean> {
-    try {
-      localStorage.setItem('admin_vehicle_categories', JSON.stringify(categories));
-      window.dispatchEvent(new CustomEvent('supabase-vehicle-categories-updated', { detail: categories }));
-    } catch (e) {
-      console.error('Failed to save vehicle categories locally:', e);
-    }
-
+  async saveVehicleCategories(categories: VehicleCategory[]): Promise<{ success: boolean; error?: string }> {
     if (supabaseClient) {
       try {
-        console.log('[Supabase Service] Saving vehicle categories to public.vehicle_categories table...');
+        console.log('[Supabase Service Debug] Saving vehicle categories to public.vehicle_categories table...');
+        console.log('[Supabase Service Debug] Raw categories input:', categories);
         
         const payload = categories.map(cat => ({
           id: cat.id || crypto.randomUUID(),
@@ -502,23 +496,38 @@ export const SupabaseService = {
           updated_at: new Date().toISOString()
         }));
 
-        const { error } = await supabaseClient
+        console.log('[Supabase Service Debug] Formatted payload for upsert operation:', payload);
+
+        // Core Fix: Use 'id' (the primary key with unique constraint) instead of 'name' as conflict target.
+        // If 'name' doesn't have a unique constraint or unique index in the table, Postgres throws on ON CONFLICT.
+        const { data, error } = await supabaseClient
           .from('vehicle_categories')
-          .upsert(payload, { onConflict: 'name' });
+          .upsert(payload, { onConflict: 'id' });
 
         if (error) {
-          console.warn('[Supabase Service warning] Failed to upsert vehicle categories in database:', error);
-          return false;
+          console.error('[Supabase Service error] Failed to upsert vehicle categories in database:', error);
+          return { success: false, error: `${error.message || 'Unknown database error'} (Code: ${error.code || 'N/A'})` };
         }
 
-        console.log('[Supabase Service success] Saved vehicle categories to database successfully.');
-        return true;
+        console.log('[Supabase Service success] Saved vehicle categories to database successfully. Data response:', data);
       } catch (err: any) {
-        console.error('[Supabase Service fail] saveVehicleCategories exception:', err);
-        return false;
+        console.error('[Supabase Service fail] saveVehicleCategories exception during database write:', err);
+        return { success: false, error: err.message || 'Exception during database write' };
       }
+    } else {
+      console.warn('[Supabase Service warning] Supabase client is not initialized. Saving to localStorage fallback only.');
     }
 
-    return true;
+    // Save to localStorage and dispatch update events after/if Supabase sync succeeds
+    try {
+      console.log('[Supabase Service Cache] Updating local storage cache with saved vehicle categories:', categories);
+      localStorage.setItem('admin_vehicle_categories', JSON.stringify(categories));
+      window.dispatchEvent(new CustomEvent('supabase-vehicle-categories-updated', { detail: categories }));
+    } catch (e: any) {
+      console.error('Failed to save vehicle categories locally after Supabase sync:', e);
+      return { success: false, error: `Saved to database, but failed local storage cache update: ${e.message}` };
+    }
+
+    return { success: true };
   },
 };

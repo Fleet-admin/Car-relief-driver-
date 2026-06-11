@@ -122,26 +122,35 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   });
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
   const [isFareMappingExpanded, setIsFareMappingExpanded] = useState(false);
 
   const saveFareSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPricingError(null);
     try {
-      const ok = await SupabaseService.saveVehicleCategories(vehicleCategories);
-      setSaveSuccessMsg(true);
-      if (ok) {
+      console.log('[Admin Panel UI] Submitting vehicle pricing categories edit sync request...');
+      const result = await SupabaseService.saveVehicleCategories(vehicleCategories);
+      
+      if (result.success) {
+        setSaveSuccessMsg(true);
         onNotifyTriggered('Vehicle Category Pricing updated and saved to Supabase successfully!');
+        setTimeout(() => setSaveSuccessMsg(false), 3000);
       } else {
-        onNotifyTriggered('Vehicle Category Pricing updated locally, but Supabase connection failed.');
+        const errorText = result.error || 'Failed to save to database.';
+        setPricingError(errorText);
+        onNotifyTriggered('Database Sync Error: ' + errorText);
       }
-      setTimeout(() => setSaveSuccessMsg(false), 3000);
     } catch (err: any) {
-      alert('Failed to save settings: ' + err.message);
+      const exceptionText = err.message || 'An unexpected exception occurred';
+      setPricingError(exceptionText);
+      onNotifyTriggered('Failed to save settings: ' + exceptionText);
     }
   };
 
   const resetFareToDefaults = async () => {
     if (window.confirm('Do you want to reset all vehicle pricing categories back to system standard plans? This will overwrite live database settings.')) {
+      setPricingError(null);
       const defaultConfigs: VehicleCategory[] = [
         { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
         { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
@@ -151,15 +160,26 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
         { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
         { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
       ];
-      setVehicleCategories(defaultConfigs);
-      const ok = await SupabaseService.saveVehicleCategories(defaultConfigs);
-      setSaveSuccessMsg(true);
-      if (ok) {
-        onNotifyTriggered('Vehicle pricing categories reset to defaults in Supabase!');
-      } else {
-        onNotifyTriggered('Vehicle pricing categories reset to defaults locally!');
+      try {
+        console.log('[Admin Panel UI] Initiating system reset defaults requests in database...');
+        const result = await SupabaseService.saveVehicleCategories(defaultConfigs);
+        
+        if (result.success) {
+          // Reflection in the UI only *after* successful database update confirmation
+          setVehicleCategories(defaultConfigs);
+          setSaveSuccessMsg(true);
+          onNotifyTriggered('Vehicle pricing categories reset to defaults in Supabase!');
+          setTimeout(() => setSaveSuccessMsg(false), 3000);
+        } else {
+          const errorText = result.error || 'Failed to sync defaults to database.';
+          setPricingError(errorText);
+          onNotifyTriggered('Database Sync Error: ' + errorText);
+        }
+      } catch (err: any) {
+        const exceptionText = err.message || 'An unexpected exception occurred';
+        setPricingError(exceptionText);
+        onNotifyTriggered('Failed to save settings: ' + exceptionText);
       }
-      setTimeout(() => setSaveSuccessMsg(false), 3000);
     }
   };
 
@@ -813,6 +833,13 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                     {saveSuccessMsg && (
                       <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-semibold text-center rounded-lg font-sans">
                         ✓ Configurations Sync Success!
+                      </div>
+                    )}
+
+                    {pricingError && (
+                      <div className="p-2.5 bg-red-50 border border-red-200 text-red-800 text-[11px] font-semibold text-left rounded-lg font-sans flex flex-col gap-1">
+                        <span className="font-bold">⚠️ Database Sync Failed:</span>
+                        <span className="font-mono text-[10px] whitespace-pre-wrap">{pricingError}</span>
                       </div>
                     )}
 
