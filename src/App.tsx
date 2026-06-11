@@ -118,6 +118,32 @@ export default function App() {
     }
   }, []);
 
+  // Simple viewport resize and orientation listener to enforce fresh layouts and re-renders
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1024));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    // Double trigger after a slight delay to ensure browser reported dimensions settle
+    const handleOrientationTransition = () => {
+      setTimeout(() => {
+        setViewportWidth(window.innerWidth);
+      }, 200);
+    };
+    window.addEventListener('orientationchange', handleOrientationTransition);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationTransition);
+    };
+  }, []);
+
   // Map state
   const [pickupLoc, setPickupLoc] = useState<LocationData | null>(null);
   const [dropLoc, setDropLoc] = useState<LocationData | null>(null);

@@ -104,6 +104,35 @@ export default function MapPicker({
     };
   }, []);
 
+  // Synchronize Leaflet rendering geometry with container changes from resizing or rotation
+  useEffect(() => {
+    const handleViewportChange = () => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
+
+    // Periodically invalidate size for 2 seconds on load to handle DOM layout changes & animations
+    const interval = setInterval(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    }, 250);
+
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 2000);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('orientationchange', handleViewportChange);
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
   // Sync state markers
   useEffect(() => {
     const map = mapRef.current;
