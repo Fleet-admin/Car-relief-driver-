@@ -60,7 +60,6 @@ const parseEstimateDetails = (requirements: string | null) => {
     distance: parsedData['Distance'] || 'N/A',
     base: parsedData['Base'] || 'N/A',
     rate: parsedData['Rate'] || 'N/A',
-    multiplier: parsedData['Multiplier'] || 'N/A',
     fare: parsedData['Estimated Fare'] || 'N/A',
     notes: cleanedText,
   };
@@ -1072,7 +1071,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                         Estimate Only
                                       </span>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-neutral-300">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] text-neutral-300">
                                       <div>
                                         <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">
                                           Distance
@@ -1087,14 +1086,6 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                         </span>
                                         <span className="font-mono">
                                           {est.base} + {est.rate}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">
-                                          Multiplier
-                                        </span>
-                                        <span className="font-mono text-amber-300 font-semibold">
-                                          {est.multiplier}
                                         </span>
                                       </div>
                                       <div>
