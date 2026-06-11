@@ -28,7 +28,8 @@ import {
   BellRing,
   RefreshCw,
   Coins,
-  Sliders
+  Sliders,
+  ChevronDown
 } from 'lucide-react';
 import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
@@ -82,6 +83,9 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
 
   // Selected Inquiry detail view modal
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+
+  // Expanded inquiry card ID state for accordion view
+  const [expandedInquiryId, setExpandedInquiryId] = useState<string | null>(null);
 
   // Authentication Lock state
   const [passcode, setPasscode] = useState('');
@@ -901,196 +905,322 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-neutral-150">
-                {filteredInquiries.map((inq) => (
-                  <div
-                    key={inq.id}
-                    id={`inquiry-row-${inq.id}`}
-                    className={`p-5 hover:bg-neutral-50 transition-colors ${
-                      selectedInquiry?.id === inq.id ? 'bg-neutral-100/50' : ''
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-                      <div>
-                        {/* Service category & details */}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-neutral-900 text-white font-sans tracking-wide">
-                            {inq.service_type}
-                          </span>
-                          <span className="text-[10px] text-neutral-400 font-mono font-bold uppercase">
-                            Ref: {inq.id.substring(0, 8)}...
-                          </span>
-                        </div>
-
-                        {/* Vehicle Category label */}
-                        <div className="text-xs text-neutral-500 mt-1 font-medium font-sans">
-                          Vehicle Category: <span className="text-neutral-800 font-bold">{inq.vehicle_category || 'Not Specified'}</span>
-                        </div>
-
-                        {/* Customer Name */}
-                        <h4 className="text-md font-bold text-neutral-950 tracking-tight mt-1.5 flex items-center gap-1.5">
-                          {inq.name}
-                        </h4>
-
-                        {/* Customer Phone */}
-                        <div className="flex items-center gap-1.5 text-xs text-neutral-600 mt-2 font-mono">
-                          <Phone className="w-3.5 h-3.5 text-neutral-400" />
-                          <span>{inq.phone}</span>
-                        </div>
-
-                        {/* Chrono travel date */}
-                        <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 mt-1 font-sans">
-                          <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-                          <span>
-                            Booked: <strong>{inq.travel_date}</strong> (Filed:{' '}
-                            {new Date(inq.created_at).toLocaleDateString()})
-                          </span>
-                        </div>
-
-                        {/* Location address segments */}
-                        {inq.pickup_location && (
-                          <div className="flex items-start gap-1 p-1 px-2 border border-neutral-200 bg-neutral-50 rounded-lg text-[11px] text-neutral-600 mt-3 font-sans max-w-md">
-                            <MapPin className="w-3.5 h-3.5 text-neutral-400 mt-0.5 shrink-0" />
-                            <span className="truncate">
-                              {inq.pickup_location}
-                              {inq.drop_location ? ` ➔ ${inq.drop_location}` : ''}
+              <div className="space-y-4">
+                {filteredInquiries.map((inq) => {
+                  const isExpanded = expandedInquiryId === inq.id;
+                  return (
+                    <div
+                      key={inq.id}
+                      id={`inquiry-row-${inq.id}`}
+                      onClick={() => setExpandedInquiryId(isExpanded ? null : inq.id)}
+                      className={`block bg-white border rounded-xl p-5 hover:border-neutral-300 transition-all duration-200 cursor-pointer text-left select-none ${
+                        isExpanded
+                          ? 'border-neutral-400 shadow-md ring-1 ring-neutral-400/10'
+                          : selectedInquiry?.id === inq.id
+                          ? 'border-neutral-300 bg-neutral-100/50 shadow-sm'
+                          : 'border-neutral-200 shadow-sm'
+                      }`}
+                    >
+                      {/* Compact Header Area - Always visible */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          {/* Service type & details row */}
+                          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-neutral-900 text-white font-sans tracking-wide">
+                              {inq.service_type}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 font-mono font-bold uppercase">
+                              Ref: {inq.id.substring(0, 8)}...
                             </span>
                           </div>
-                        )}
-                      </div>
 
-                      {/* Status select, contact actions & delete split controls */}
-                      <div className="flex flex-col items-start sm:items-end gap-2 text-right w-full sm:w-auto self-stretch sm:self-auto justify-between">
-                        {/* Status Select Badges dropdown */}
-                        <div>
-                          <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-widest mb-1 font-sans text-left sm:text-right">
-                            Active Status
-                          </label>
-                          <select
-                            id={`status-dropdown-${inq.id}`}
-                            value={inq.status}
-                            onChange={(e) => handleUpdateStatus(inq.id, e.target.value as InquiryStatus)}
-                            className={`px-2 py-1 text-xs font-semibold rounded-lg border focus:outline-none ${
+                          {/* Customer Name */}
+                          <h4 className="text-md font-bold text-neutral-950 tracking-tight">
+                            {inq.name}
+                          </h4>
+
+                          {/* Secondary Compact Metadata */}
+                          <div className="text-xs text-neutral-500 mt-1 font-medium font-sans flex flex-wrap items-center gap-y-1 gap-x-2.5">
+                            <span>
+                              Category:{' '}
+                              <strong className="text-neutral-800 font-bold">
+                                {inq.vehicle_category || 'Not Specified'}
+                              </strong>
+                            </span>
+                            <span className="text-neutral-300">•</span>
+                            <span className="flex items-center gap-1 font-sans">
+                              <Calendar className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                              Booked: <strong>{inq.travel_date}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status badge and rotating chevron toggle */}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[11px] font-bold font-sans px-2.5 py-1 rounded-full ${
                               inq.status === 'New'
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
                                 : inq.status === 'Contacted'
-                                ? 'bg-amber-50 border-amber-200 text-amber-800'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-100'
                                 : inq.status === 'Confirmed'
-                                ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
-                                : 'bg-neutral-100 border-neutral-300 text-neutral-600'
+                                ? 'bg-indigo-50 text-indigo-800 border border-indigo-100'
+                                : 'bg-neutral-100 text-neutral-600 border border-neutral-200'
                             }`}
                           >
-                            <option value="New">🟢 New Alert</option>
-                            <option value="Contacted">🟡 Contacted Customer</option>
-                            <option value="Confirmed">🔵 Confirmed Booking</option>
-                            <option value="Closed">⚪ Closed Archive</option>
-                          </select>
-                        </div>
-
-                        {/* Customer call actions */}
-                        <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                          <a
-                            href={`tel:${inq.phone}`}
-                            id={`btn-call-customer-${inq.id}`}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold bg-[#111827] hover:bg-[#1F2937] text-white rounded-lg transition"
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                            Call Now
-                          </a>
-
-                          <a
-                            href={`https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(
-                              inq.name
-                            )},%20this%20is%20Admin%20from%20Car%20%26%20Driver%20Relief%20Services%20regarding%20booking%20reference%20${inq.id.substring(
-                              0,
-                              8
-                            )}.`}
-                            target="_blank"
-                            rel="noreferrer"
-                            id={`btn-wa-customer-${inq.id}`}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold bg-[#10B981] hover:bg-emerald-600 text-white rounded-lg transition"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 fill-white" />
-                            WhatsApp
-                          </a>
-
-                          <button
-                            onClick={() => handleDelete(inq.id)}
-                            id={`btn-delete-inquiry-${inq.id}`}
-                            className="p-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition"
-                            title="Delete Lead Permanent"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                inq.status === 'New'
+                                  ? 'bg-emerald-500'
+                                  : inq.status === 'Contacted'
+                                  ? 'bg-amber-500'
+                                  : inq.status === 'Confirmed'
+                                  ? 'bg-indigo-500'
+                                  : 'bg-neutral-400'
+                              }`}
+                            />
+                            {inq.status}
+                          </span>
+                          <ChevronDown
+                            className={`w-5 h-5 text-neutral-400 transition-transform duration-300 shrink-0 ${
+                              isExpanded ? 'rotate-180 text-neutral-700' : ''
+                            }`}
+                          />
                         </div>
                       </div>
-                    </div>
 
-                    {/* Special instruction preview block if exists */}
-                    {(() => {
-                      const est = parseEstimateDetails(inq.additional_requirements);
-                      if (est) {
-                        return (
-                          <div className="mt-4 space-y-3 font-sans">
-                            {/* Visual Estimation Card */}
-                            <div className="p-3.5 bg-neutral-900 text-white rounded-xl border border-neutral-850 text-xs space-y-2 relative overflow-hidden">
-                              <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl pointer-events-none" />
-                              <div className="flex items-center justify-between pb-1.5 border-b border-neutral-800 text-[10px] uppercase font-bold text-amber-400 font-mono">
-                                <span className="flex items-center gap-1">
-                                  <span>🚗</span> Calculated Fare Reference
-                                </span>
-                                <span className="bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded tracking-wide">
-                                  Subject to Confirm
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-neutral-300">
-                                <div>
-                                  <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">Distance</span>
-                                  <span className="font-mono font-bold text-white">{est.distance}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">Formula Base+Km</span>
-                                  <span className="font-mono">{est.base} + {est.rate}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">Multiplier</span>
-                                  <span className="font-mono text-amber-300 font-semibold">{est.multiplier}</span>
-                                </div>
-                                <div>
-                                  <span className="block text-neutral-550 text-[9px] font-bold uppercase tracking-wider">Estimated Fare</span>
-                                  <span className="font-mono text-amber-400 font-extrabold text-xs">{est.fare}</span>
-                                </div>
+                      {/* Smooth Expanded Information & Administration actions block */}
+                      <motion.div
+                        initial={false}
+                        animate={{ height: isExpanded ? 'auto' : 0, opacity: isExpanded ? 1 : 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-4 mt-4 border-t border-neutral-150 space-y-4">
+                          {/* Contact Info & Age metadata split grids */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div className="space-y-1">
+                              <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
+                                Customer Contact
+                              </span>
+                              <div className="flex items-center gap-2 text-xs text-neutral-800 font-mono bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-150">
+                                <Phone className="w-4 h-4 text-neutral-400 shrink-0" />
+                                <strong>{inq.phone}</strong>
                               </div>
                             </div>
 
-                            {/* User notes if present */}
-                            {est.notes && (
-                              <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-150 text-xs text-neutral-600 font-sans leading-relaxed">
-                                <strong className="text-neutral-900 block font-semibold mb-0.5 uppercase text-[9px] tracking-wider text-neutral-400">
-                                  Additional Special Specifications:
-                                </strong>
-                                {est.notes}
+                            <div className="space-y-1">
+                              <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
+                                Filed Timestamp
+                              </span>
+                              <div className="flex items-center gap-2 text-xs text-neutral-600 bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-150 font-sans">
+                                <Clock className="w-4 h-4 text-neutral-400 shrink-0" />
+                                <span>{new Date(inq.created_at).toLocaleString()}</span>
                               </div>
-                            )}
+                            </div>
                           </div>
-                        );
-                      }
 
-                      if (inq.additional_requirements) {
-                        return (
-                          <div className="mt-4 p-3 bg-neutral-50 rounded-xl border border-neutral-150 text-xs text-neutral-600 font-sans leading-relaxed">
-                            <strong className="text-neutral-900 block font-semibold mb-0.5 uppercase text-[9px] tracking-wider text-neutral-400">
-                              Additional Customer Specifications:
-                            </strong>
-                            {inq.additional_requirements}
+                          {/* Route location mapping segment */}
+                          {inq.pickup_location && (
+                            <div className="space-y-1.5">
+                              <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
+                                Logistical Route Details
+                              </span>
+                              <div className="flex items-start gap-2.5 p-3.5 border border-neutral-150 bg-neutral-50 rounded-xl text-xs text-neutral-700 font-sans leading-relaxed">
+                                <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                                <div className="space-y-1.5 w-full">
+                                  <div>
+                                    <span className="text-[10px] text-neutral-450 font-bold uppercase mr-1.5">
+                                      Pickup Point:
+                                    </span>
+                                    <span className="font-semibold text-neutral-900">
+                                      {inq.pickup_location}
+                                    </span>
+                                  </div>
+                                  {inq.drop_location && (
+                                    <div className="border-t border-neutral-200 pt-1.5 mt-1.5">
+                                      <span className="text-[10px] text-neutral-450 font-bold uppercase mr-1.5">
+                                        Dropoff Destination:
+                                      </span>
+                                      <span className="font-semibold text-neutral-900">
+                                        {inq.drop_location}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Dynamic calculated cost breakdown cards */}
+                          {(() => {
+                            const est = parseEstimateDetails(inq.additional_requirements);
+                            if (est) {
+                              return (
+                                <div className="space-y-2 font-sans">
+                                  <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
+                                    Calculated Fare Breakdown
+                                  </span>
+                                  {/* Visual Estimation Card */}
+                                  <div className="p-4 bg-neutral-900 text-white rounded-xl border border-neutral-800 text-xs space-y-2.5 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-20 h-20 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+                                    <div className="flex items-center justify-between pb-2 border-b border-neutral-800 text-[10px] uppercase font-bold text-amber-400 font-mono">
+                                      <span className="flex items-center gap-1">
+                                        <span>🚗</span> Dynamic Estimation Segment
+                                      </span>
+                                      <span className="bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded tracking-wide">
+                                        Estimate Only
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] text-neutral-300">
+                                      <div>
+                                        <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">
+                                          Distance
+                                        </span>
+                                        <span className="font-mono font-bold text-white">
+                                          {est.distance}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">
+                                          Base + Rate
+                                        </span>
+                                        <span className="font-mono">
+                                          {est.base} + {est.rate}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-neutral-500 text-[9px] font-bold uppercase tracking-wider">
+                                          Multiplier
+                                        </span>
+                                        <span className="font-mono text-amber-300 font-semibold">
+                                          {est.multiplier}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-neutral-450 text-[9px] font-bold uppercase tracking-wider">
+                                          Estimated Fare
+                                        </span>
+                                        <span className="font-mono text-amber-400 font-extrabold text-xs">
+                                          {est.fare}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Special specs description */}
+                                  {est.notes && (
+                                    <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-150 text-xs text-neutral-600 font-sans leading-relaxed">
+                                      <strong className="text-neutral-900 block font-semibold mb-0.5 uppercase text-[9px] tracking-wider text-neutral-400 font-sans">
+                                        Additional Custom Requirements:
+                                      </strong>
+                                      {est.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            if (inq.additional_requirements) {
+                              return (
+                                <div className="space-y-1.5">
+                                  <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
+                                    Customer Requirements
+                                  </span>
+                                  <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-150 text-xs text-neutral-600 font-sans leading-relaxed">
+                                    <strong className="text-neutral-900 block font-semibold mb-0.5 uppercase text-[9px] tracking-wider text-neutral-400">
+                                      Customer specifications:
+                                    </strong>
+                                    {inq.additional_requirements}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return null;
+                          })()}
+
+                          {/* Control Action Tools - Row inside expansion details */}
+                          <div className="pt-4 border-t border-neutral-150 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                            {/* Active status update box */}
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-2"
+                            >
+                              <label
+                                htmlFor={`status-dropdown-${inq.id}`}
+                                className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-sans"
+                              >
+                                Modify Status:
+                              </label>
+                              <select
+                                id={`status-dropdown-${inq.id}`}
+                                value={inq.status}
+                                onChange={(e) =>
+                                  handleUpdateStatus(inq.id, e.target.value as InquiryStatus)
+                                }
+                                className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border focus:outline-none cursor-pointer ${
+                                  inq.status === 'New'
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : inq.status === 'Contacted'
+                                    ? 'bg-amber-50 border-amber-200 text-amber-800'
+                                    : inq.status === 'Confirmed'
+                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                                    : 'bg-neutral-100 border-neutral-300 text-neutral-600'
+                                }`}
+                              >
+                                <option value="New">🟢 New Alert</option>
+                                <option value="Contacted">🟡 Contacted Customer</option>
+                                <option value="Confirmed">🔵 Confirmed Booking</option>
+                                <option value="Closed">⚪ Closed Archive</option>
+                              </select>
+                            </div>
+
+                            {/* Push contact communications actions */}
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center gap-2"
+                            >
+                              <a
+                                href={`tel:${inq.phone}`}
+                                id={`btn-call-customer-${inq.id}`}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold bg-[#111827] hover:bg-[#1F2937] text-white rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                                Call Now
+                              </a>
+
+                              <a
+                                href={`https://wa.me/${inq.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(
+                                  inq.name
+                                )},%20this%20is%20Admin%20from%20Car%20%26%20Driver%20Relief%20Services%20regarding%20booking%20reference%20${inq.id.substring(
+                                  0,
+                                  8
+                                )}.`}
+                                target="_blank"
+                                rel="noreferrer"
+                                id={`btn-wa-customer-${inq.id}`}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold bg-[#10B981] hover:bg-emerald-600 text-white rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 fill-white" />
+                                WhatsApp
+                              </a>
+
+                              <button
+                                onClick={() => handleDelete(inq.id)}
+                                id={`btn-delete-inquiry-${inq.id}`}
+                                className="p-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                                title="Delete Lead Permanent"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        );
-                      }
-
-                      return null;
-                    })()}
-                  </div>
-                ))}
+                        </div>
+                      </motion.div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
