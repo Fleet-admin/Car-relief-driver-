@@ -438,16 +438,6 @@ export const SupabaseService = {
   },
 
   async getVehicleCategories(): Promise<VehicleCategory[]> {
-    const defaultConfigs: VehicleCategory[] = [
-      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
-      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
-      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
-      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
-      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
-      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
-      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
-    ];
-
     if (supabaseClient) {
       try {
         console.log('[Supabase Service] query fetch called for table "vehicle_categories"');
@@ -457,26 +447,32 @@ export const SupabaseService = {
           .order('name', { ascending: true });
 
         if (error) {
-          console.warn('[Supabase Service warning] Error querying vehicle_categories table, using fallback:', error);
-        } else if (data && data.length > 0) {
-          console.log('[Supabase Service success] Loaded vehicle categories from live table', data);
+          console.error('[Supabase Service error] Error querying vehicle_categories table:', error);
+          throw error;
+        }
+
+        if (data) {
+          console.log('[Supabase Service Debug] Data received from Supabase', data);
           return data as VehicleCategory[];
         }
-      } catch (err) {
-        console.warn('[Supabase Service Warn] Exception querying vehicle_categories table:', err);
+      } catch (err: any) {
+        console.error('[Supabase Service Warn] Exception querying vehicle_categories table:', err);
+        throw err;
       }
+    } else {
+      console.warn('[Supabase Service warning] Supabase client is not initialized.');
     }
 
-    // Try localStorage
-    try {
-      const saved = localStorage.getItem('admin_vehicle_categories');
-      if (saved) {
-        return JSON.parse(saved) as VehicleCategory[];
-      }
-    } catch {
-      // ignore
-    }
-
+    // fallback when Supabase connection is offline/local mock context
+    const defaultConfigs: VehicleCategory[] = [
+      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
+      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
+      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
+      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
+      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
+      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
+      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+    ];
     return defaultConfigs;
   },
 

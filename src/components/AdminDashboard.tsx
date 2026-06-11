@@ -97,29 +97,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Robust Vehicle Category pricing configurations
-  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>(() => {
-    const defaultConfigs: VehicleCategory[] = [
-      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
-      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
-      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
-      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
-      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
-      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
-      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
-    ];
-    try {
-      const saved = localStorage.getItem('admin_vehicle_categories');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return defaultConfigs;
-  });
+  const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -135,6 +113,13 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       if (result.success) {
         setSaveSuccessMsg(true);
         onNotifyTriggered('Vehicle Category Pricing updated and saved to Supabase successfully!');
+        
+        // Refresh local UI state from the latest database values
+        const freshCats = await SupabaseService.getVehicleCategories();
+        console.log('Data received from Supabase', freshCats);
+        setVehicleCategories(freshCats);
+        console.log('Data displayed in the Admin Portal', freshCats);
+
         setTimeout(() => setSaveSuccessMsg(false), 3000);
       } else {
         const errorText = result.error || 'Failed to save to database.';
@@ -165,8 +150,12 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
         const result = await SupabaseService.saveVehicleCategories(defaultConfigs);
         
         if (result.success) {
-          // Reflection in the UI only *after* successful database update confirmation
-          setVehicleCategories(defaultConfigs);
+          // Refresh from live database to update UI 
+          const freshCats = await SupabaseService.getVehicleCategories();
+          console.log('Data received from Supabase', freshCats);
+          setVehicleCategories(freshCats);
+          console.log('Data displayed in the Admin Portal', freshCats);
+
           setSaveSuccessMsg(true);
           onNotifyTriggered('Vehicle pricing categories reset to defaults in Supabase!');
           setTimeout(() => setSaveSuccessMsg(false), 3000);
@@ -283,7 +272,9 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       setInquiries(data);
       
       const cats = await SupabaseService.getVehicleCategories();
+      console.log('Data received from Supabase', cats);
       setVehicleCategories(cats);
+      console.log('Data displayed in the Admin Portal', cats);
     } catch (err: any) {
       setErrorText(err?.message || 'Database lookup query failed. Check SQL tables schema.');
     } finally {
