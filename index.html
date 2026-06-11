@@ -2,7 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      (function() {
+        // Check if launching as a standalone PWA (installed WebAPK on Android)
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        
+        if (isStandalone) {
+          // Dynamic viewport normalization function to bypass Chrome's origin-specific "Desktop Site" setting
+          function enforceNativeViewport() {
+            var existingViewports = document.querySelectorAll('meta[name="viewport"]');
+            existingViewports.forEach(function(el) {
+              el.remove();
+            });
+            
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover';
+            document.head.appendChild(meta);
+          }
+          
+          enforceNativeViewport();
+          
+          // Re-trigger viewport check on DOM content loaded and window load to prevent late overrides
+          window.addEventListener('DOMContentLoaded', enforceNativeViewport);
+          window.addEventListener('load', enforceNativeViewport);
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#111827" />
