@@ -254,13 +254,13 @@ export default function App() {
     <div className="min-h-screen bg-neutral-50 font-sans flex flex-col justify-between selection:bg-neutral-900 selection:text-amber-450">
       {/* Upper Navigation Header */}
       <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">
           <button
             onClick={() => {
               setActiveTabPersisted('client');
               setActiveNavPersisted('home');
             }}
-            className="flex items-center gap-2 text-left group animate-fade-in"
+            className="flex items-center gap-2 text-left group animate-fade-in shrink-0"
           >
             <div className="p-2.5 bg-neutral-900 text-white rounded-xl shadow-md group-hover:bg-[#10B981] transition-all">
               <Car className="w-5 h-5 text-white animate-pulse" />
@@ -284,25 +284,27 @@ export default function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               id="header-nav-client"
-              className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 ${
                 activeTab === 'client'
                   ? 'bg-neutral-900 text-white shadow-sm'
                   : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
               }`}
             >
-              Customer Desk
+              <span className="hidden sm:inline">Customer Desk</span>
+              <span className="inline sm:hidden">Customer</span>
             </button>
 
             <button
               onClick={() => setActiveTabPersisted('admin')}
               id="header-nav-admin"
-              className={`px-4 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 ${
                 activeTab === 'admin'
                   ? 'bg-amber-500 text-neutral-950 shadow-sm border border-amber-400/50'
                   : 'text-neutral-500 hover:text-neutral-900 override-nav-style hover:bg-neutral-100'
               }`}
             >
-              Admin Dashboard
+              <span className="hidden sm:inline">Admin Dashboard</span>
+              <span className="inline sm:hidden">Admin</span>
             </button>
           </div>
         </div>
@@ -347,8 +349,11 @@ export default function App() {
               className="space-y-8"
             >
               {/* Dynamic Interactive Navigation Menu Bar */}
-              <div className="bg-white border border-neutral-200 rounded-2xl p-2 shadow-sm flex flex-wrap gap-1 items-center justify-between" id="client-sub-nav">
-                <div className="flex flex-wrap items-center gap-1 w-full lg:w-auto">
+              <div className="bg-white border border-neutral-200 rounded-2xl p-2 shadow-sm flex gap-1 items-center justify-between overflow-hidden" id="client-sub-nav">
+                <div 
+                  className="flex flex-row overflow-x-auto lg:overflow-x-visible whitespace-nowrap lg:whitespace-normal flex-nowrap lg:flex-wrap items-center gap-1 w-full lg:w-auto"
+                  style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
+                >
                   {navigationItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeNav === item.key;
@@ -360,10 +365,10 @@ export default function App() {
                           setActiveNavPersisted(item.key);
                           window.scrollTo({ top: 0, behavior: 'instant' });
                         }}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                        className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 ${
                           isActive
                             ? 'bg-neutral-900 text-white shadow-md font-bold'
-                            : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100'
+                            : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100 font-medium'
                         }`}
                       >
                         <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
@@ -373,7 +378,7 @@ export default function App() {
                   })}
                 </div>
                 
-                <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 border-l border-neutral-200">
+                <div className="hidden lg:flex items-center gap-2 px-4 py-1.5 border-l border-neutral-200 shrink-0">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
                   <span className="text-[10px] font-mono uppercase text-neutral-400 font-bold tracking-widest">
                     Live Rates Enabled
@@ -412,31 +417,31 @@ export default function App() {
                         </p>
 
                         {/* Call-to-actions buttons */}
-                        <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 w-full">
                           <button
                             onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                             id="hero-btn-request-quote"
-                            className="px-6 py-3 bg-white text-neutral-950 hover:bg-neutral-100 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md transform hover:-translate-y-0.5 font-sans"
+                            className="w-full sm:w-auto px-6 py-3 bg-white text-neutral-950 hover:bg-neutral-100 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md transform hover:-translate-y-0.5 font-sans flex items-center justify-center"
                           >
                             Request a Quote
                           </button>
-
+ 
                           <a
                             href={`tel:${contactPhone}`}
                             id="hero-btn-call-now"
-                            className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-neutral-700 font-sans"
+                            className="w-full sm:w-auto px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-neutral-700 font-sans flex items-center justify-center"
                           >
                             Call Now
                           </a>
-
+ 
                           <a
                             href={`https://wa.me/${contactWhatsapp}?text=Hello,%20I'm%20inquiring%20about%20your%20Fleet%20and%20Driver%20Relief%20Services.`}
                             target="_blank"
                             rel="noreferrer"
                             id="hero-btn-whatsapp-now"
-                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all font-sans flex items-center gap-1.5"
+                            className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all font-sans flex items-center justify-center gap-1.5"
                           >
-                            <svg className="w-4 h-4 fill-white text-white" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 fill-white text-white shrink-0" viewBox="0 0 24 24">
                               <path d="M17.472 14.382c-.022-.015-.045-.03-.067-.045-.083-.053-.167-.105-.252-.158-.291-.18-.588-.363-.89-.533-.149-.084-.31-.13-.473-.134a1.03 1.03 0 0 0-.742.316c-.143.155-.286.31-.428.465l-.337.367c-.122.115-.284.168-.445.143a3.86 3.86 0 0 1-1.354-.51 5.92 5.92 0 0 1-1.468-1.107 5.8 5.8 0 0 1-.954-1.399c-.1-.19-.074-.424.062-.587l.383-.437c.123-.139.245-.278.368-.418.172-.194.24-.457.185-.716a5.7 5.7 0 0 0-.585-1.579c-.1-.2-.25-.37-.44-.49a.9.9 0 0 0-.73-.08c-.24.08-.47.21-.67.39l-.49.49c-.52.52-.77 1.25-.66 1.97.23 1.54.91 2.97 1.93 4.12a10.02 10.02 0 0 0 4.7 3.03l.36.11a3.02 3.02 0 0 0 1.95-.2c.28-.15.53-.35.73-.6l.44-.54c.26-.32.32-.76.15-1.12zM12 2C6.48 2 2 6.48 2 12c0 2.17.7 4.19 1.88 5.83l-1.25 4.54 4.67-1.22l.54.29C9.39 21.78 10.66 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.92 0-3.7-.56-5.21-1.51l-.37-.23-2.73.71.73-2.65-.25-.4A7.95 7.95 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z" />
                             </svg>
                             Telegram / WhatsApp

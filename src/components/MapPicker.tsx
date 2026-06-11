@@ -310,7 +310,7 @@ export default function MapPicker({
 
         {/* Address Search Field */}
         <form onSubmit={handleSearch} className="flex-1 relative flex gap-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-neutral-400" />
             <input
               type="text"
@@ -320,20 +320,38 @@ export default function MapPicker({
               placeholder={`Search ${activePinType} address...`}
               className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-sans"
             />
+
+            {/* Address Dropdown Results inside relative boundary */}
+            {searchResults.length > 0 && (
+              <div className="bg-white border border-neutral-200 rounded-lg shadow-xl max-h-48 overflow-y-auto divide-y divide-neutral-100 z-[1000] absolute left-0 right-0 mt-1">
+                {searchResults.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    id={`address-search-result-${idx}`}
+                    onClick={() => selectSearchResult(item)}
+                    className="w-full text-left px-4 py-2.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-start gap-2 transition-all font-sans"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
+                    <span>{item.display_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             type="submit"
             id="btn-map-search-submit"
             disabled={isSearching}
-            className="px-4 py-2 text-xs font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 focus:outline-none disabled:opacity-50 shrink-0 font-sans"
+            className="px-3 sm:px-4 py-2 text-xs font-medium bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 focus:outline-none disabled:opacity-50 shrink-0 font-sans"
           >
             {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Search'}
           </button>
           <button
             type="button"
             id="btn-gps-locate"
-            onClick={handleGetCurrentLocation}
             disabled={gpsLoading}
+            onClick={handleGetCurrentLocation}
             title="Use current GPS location"
             className="p-2 border border-neutral-300 bg-white rounded-lg hover:bg-neutral-50 text-neutral-600 disabled:opacity-50 shrink-0"
           >
@@ -345,24 +363,6 @@ export default function MapPicker({
           </button>
         </form>
       </div>
-
-      {/* Address Dropdown Results */}
-      {searchResults.length > 0 && (
-        <div className="bg-white border border-neutral-200 rounded-lg shadow-xl max-h-48 overflow-y-auto divide-y divide-neutral-100 z-[1000] absolute mt-12 w-full max-w-lg">
-          {searchResults.map((item, idx) => (
-            <button
-              key={idx}
-              type="button"
-              id={`address-search-result-${idx}`}
-              onClick={() => selectSearchResult(item)}
-              className="w-full text-left px-4 py-2.5 text-xs text-neutral-700 hover:bg-neutral-50 flex items-start gap-2 transition-all font-sans"
-            >
-              <MapPin className="w-3.5 h-3.5 text-neutral-400 shrink-0 mt-0.5" />
-              <span>{item.display_name}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Map Container */}
       <div className="relative flex-1 min-h-[320px] rounded-xl overflow-hidden border border-neutral-300 shadow-inner bg-neutral-100">

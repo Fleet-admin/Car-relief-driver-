@@ -26,7 +26,7 @@ export default function FloatingWhatsApp({
     <div className="fixed bottom-6 right-6 z-[9999]" id="floating-support-container">
       {/* Expanded Support Dialog Card */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl p-5 mb-2 overflow-hidden animate-in fade-in slide-in-from-bottom-[10px] duration-200">
+        <div className="absolute bottom-16 right-0 w-[calc(100vw-3rem)] sm:w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl p-5 mb-2 overflow-hidden animate-in fade-in slide-in-from-bottom-[10px] duration-200">
           <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-50 rounded-full -z-10" />
 
           {/* Header */}
