@@ -444,7 +444,7 @@ export default function App() {
                             <svg className="w-4 h-4 fill-white text-white shrink-0" viewBox="0 0 24 24">
                               <path d="M17.472 14.382c-.022-.015-.045-.03-.067-.045-.083-.053-.167-.105-.252-.158-.291-.18-.588-.363-.89-.533-.149-.084-.31-.13-.473-.134a1.03 1.03 0 0 0-.742.316c-.143.155-.286.31-.428.465l-.337.367c-.122.115-.284.168-.445.143a3.86 3.86 0 0 1-1.354-.51 5.92 5.92 0 0 1-1.468-1.107 5.8 5.8 0 0 1-.954-1.399c-.1-.19-.074-.424.062-.587l.383-.437c.123-.139.245-.278.368-.418.172-.194.24-.457.185-.716a5.7 5.7 0 0 0-.585-1.579c-.1-.2-.25-.37-.44-.49a.9.9 0 0 0-.73-.08c-.24.08-.47.21-.67.39l-.49.49c-.52.52-.77 1.25-.66 1.97.23 1.54.91 2.97 1.93 4.12a10.02 10.02 0 0 0 4.7 3.03l.36.11a3.02 3.02 0 0 0 1.95-.2c.28-.15.53-.35.73-.6l.44-.54c.26-.32.32-.76.15-1.12zM12 2C6.48 2 2 6.48 2 12c0 2.17.7 4.19 1.88 5.83l-1.25 4.54 4.67-1.22l.54.29C9.39 21.78 10.66 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.92 0-3.7-.56-5.21-1.51l-.37-.23-2.73.71.73-2.65-.25-.4A7.95 7.95 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z" />
                             </svg>
-                            Telegram / WhatsApp
+                            WhatsApp Us
                           </a>
                         </div>
 
@@ -926,7 +926,7 @@ export default function App() {
                         Contact Dynamic Dispatch Desk
                       </h3>
                       <p className="text-xs text-neutral-500 mt-2 font-sans max-w-xl mx-auto">
-                        Connect with our 24/7 support operators or access our Telegram, WhatsApp, and physical hotline operations channels directly below.
+                        Connect with our 24/7 support operators or access our WhatsApp and physical hotline operations channels directly below.
                       </p>
                     </div>
 
@@ -959,16 +959,6 @@ export default function App() {
 
                             <div className="flex gap-3 items-start">
                               <div className="p-2 bg-neutral-100 rounded-lg text-neutral-950 mt-0.5">
-                                <Send className="w-4 h-4 text-sky-500" />
-                              </div>
-                              <div>
-                                <span className="block font-bold text-neutral-900">Telegram Channel</span>
-                                <a href="https://t.me/car_and_driver_relief" target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline">@car_and_driver_relief</a>
-                              </div>
-                            </div>
-
-                            <div className="flex gap-3 items-start">
-                              <div className="p-2 bg-neutral-100 rounded-lg text-neutral-950 mt-0.5">
                                 <Mail className="w-4 h-4 text-neutral-700" />
                               </div>
                               <div>
@@ -989,7 +979,7 @@ export default function App() {
                           </div>
 
                           {/* Instant Social Channels Grid Buttons */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-4 border-t border-neutral-100">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-4 border-t border-neutral-100">
                             <a
                               href={`tel:${contactPhone}`}
                               className="flex items-center justify-center gap-1.5 py-2.5 bg-neutral-900 text-white hover:bg-neutral-800 text-[10px] font-bold uppercase rounded-lg transition"
@@ -1005,15 +995,6 @@ export default function App() {
                             >
                               <MessageSquare className="w-3.5 h-3.5" />
                               WhatsApp
-                            </a>
-                            <a
-                              href="https://t.me/car_and_driver_relief"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center justify-center gap-1.5 py-2.5 bg-sky-500 hover:bg-sky-400 text-white text-[10px] font-bold uppercase rounded-lg transition"
-                            >
-                              <Send className="w-3.5 h-3.5" />
-                              Telegram
                             </a>
                           </div>
                         </div>
