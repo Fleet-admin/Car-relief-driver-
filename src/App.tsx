@@ -531,41 +531,6 @@ export default function App() {
                       </div>
                     </section>
 
-                    {/* CTA Section */}
-                    <section className="bg-neutral-900 border border-neutral-850 rounded-2xl p-8 text-white relative overflow-hidden" id="homepage-cta">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-[#10B981]/10 rounded-full blur-3xl pointer-events-none" />
-                      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="space-y-2">
-                          <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider font-mono">
-                            Urgent Placements & Inquiries
-                          </span>
-                          <h3 className="text-2xl font-bold tracking-tight">Need Immediate Driver Relief?</h3>
-                          <p className="text-xs text-neutral-300 max-w-xl font-sans">
-                            Call our 24/7 central dispatcher hotlines directly to bypass standard scheduling queues. Instant temporary drivers deployed within 60 minutes.
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-3 w-full md:w-auto shrink-0">
-                          <a
-                            href={`tel:${contactPhone}`}
-                            className="bg-white hover:bg-neutral-100 text-neutral-950 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow font-sans"
-                          >
-                            <Phone className="w-4 h-4 text-emerald-600" />
-                            Call Now
-                          </a>
-                          <a
-                            href={`https://wa.me/${contactWhatsapp}?text=I%20need%20urgent%20driver%20assistance.`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow font-sans"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                            WhatsApp Support
-                          </a>
-                        </div>
-                      </div>
-                    </section>
-
                     {/* Brief About Us Preview Section */}
                     <section className="bg-white border border-neutral-200 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6" id="homepage-about-preview">
                       <div className="space-y-2 flex-grow max-w-3xl">
