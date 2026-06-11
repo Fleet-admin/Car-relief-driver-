@@ -255,11 +255,14 @@ export default function App() {
       {/* Upper Navigation Header */}
       <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">
+          {/* Logo & Branding */}
           <button
             onClick={() => {
               setActiveTabPersisted('client');
               setActiveNavPersisted('home');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
+            id="brand-logo-button"
             className="flex items-center gap-2 text-left group animate-fade-in shrink-0"
           >
             <div className="p-2.5 bg-neutral-900 text-white rounded-xl shadow-md group-hover:bg-[#10B981] transition-all">
@@ -275,34 +278,45 @@ export default function App() {
             </div>
           </button>
 
-          {/* Nav Tab Buttons switcher */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                setActiveTabPersisted('client');
-                setActiveNavPersisted('home');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              id="header-nav-client"
-              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 ${
-                activeTab === 'client'
-                  ? 'bg-neutral-900 text-white shadow-sm'
-                  : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
-              }`}
-            >
-              <span className="hidden sm:inline">Customer Desk</span>
-              <span className="inline sm:hidden">Customer</span>
-            </button>
+          {/* Central/Main Navbar for standard navigation links (Desktop only) */}
+          <nav className="hidden md:flex items-center gap-1 mx-auto" id="main-header-navbar">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === 'client' && activeNav === item.key;
+              return (
+                <button
+                  key={item.key}
+                  id={`header-nav-item-${item.key}`}
+                  onClick={() => {
+                    setActiveTabPersisted('client');
+                    setActiveNavPersisted(item.key);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                    isActive
+                      ? 'bg-neutral-900 text-white shadow-sm font-bold'
+                      : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100 font-medium'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
+          {/* Admin Navigation Button */}
+          <div className="flex items-center gap-2 justify-end">
             <button
               onClick={() => setActiveTabPersisted('admin')}
               id="header-nav-admin"
-              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-semibold tracking-wide transition-all shrink-0 ${
+              className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs font-bold tracking-wide transition-all shrink-0 ${
                 activeTab === 'admin'
-                  ? 'bg-amber-500 text-neutral-950 shadow-sm border border-amber-400/50'
-                  : 'text-neutral-500 hover:text-neutral-900 override-nav-style hover:bg-neutral-100'
+                  ? 'bg-amber-500 text-neutral-950 shadow-md border border-amber-400/50'
+                  : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200'
               }`}
             >
+              <Lock className={`w-3.5 h-3.5 ${activeTab === 'admin' ? 'text-neutral-900' : 'text-neutral-400'}`} />
               <span className="hidden sm:inline">Admin Dashboard</span>
               <span className="inline sm:hidden">Admin</span>
             </button>
@@ -349,9 +363,9 @@ export default function App() {
               className="space-y-8"
             >
               {/* Dynamic Interactive Navigation Menu Bar */}
-              <div className="bg-white border border-neutral-200 rounded-2xl p-2 shadow-sm flex gap-1 items-center justify-between overflow-hidden" id="client-sub-nav">
+              <div className="bg-white border border-neutral-200 rounded-2xl p-2 shadow-sm flex gap-1 items-center justify-between overflow-hidden md:hidden" id="client-sub-nav">
                 <div 
-                  className="flex flex-row overflow-x-auto lg:overflow-x-visible whitespace-nowrap lg:whitespace-normal flex-nowrap lg:flex-wrap items-center gap-1 w-full lg:w-auto"
+                  className="flex flex-row overflow-x-auto lg:overflow-x-visible whitespace-nowrap lg:whitespace-normal flex-nowrap lg:flex-wrap items-center gap-1 w-full lg:w-auto no-scrollbar"
                   style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
                 >
                   {navigationItems.map((item) => {
