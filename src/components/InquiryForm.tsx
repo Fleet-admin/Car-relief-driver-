@@ -33,6 +33,7 @@ interface LocationData {
 interface InquiryFormProps {
   pickupLoc: LocationData | null;
   dropLoc: LocationData | null;
+  selectedServiceType?: ServiceType;
   onSuccessSubmitted: (referenceId: string) => void;
   onClearLocations: () => void;
 }
@@ -55,12 +56,19 @@ function getHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: nu
 export default function InquiryForm({
   pickupLoc,
   dropLoc,
+  selectedServiceType,
   onSuccessSubmitted,
   onClearLocations,
 }: InquiryFormProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [serviceType, setServiceType] = useState<ServiceType>('Fleet Booking');
+
+  useEffect(() => {
+    if (selectedServiceType) {
+      setServiceType(selectedServiceType);
+    }
+  }, [selectedServiceType]);
   const [vehicleCategory, setVehicleCategory] = useState<string>('');
   const [travelDate, setTravelDate] = useState('');
   const [additionalRequirements, setAdditionalRequirements] = useState('');
@@ -72,6 +80,7 @@ export default function InquiryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [submissionSuccess, setSubmissionSuccess] = useState<any | null>(null);
+  const [submittedFare, setSubmittedFare] = useState<number>(0);
 
   // Configurable Vehicle Pricing Categories mapped via Admin Panel config
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>(() => {
@@ -266,6 +275,7 @@ export default function InquiryForm({
       });
 
       // Dispatch real status
+      setSubmittedFare(estimatedFare);
       setSubmissionSuccess(dbResponse);
       onSuccessSubmitted(dbResponse.id);
 
@@ -337,7 +347,7 @@ export default function InquiryForm({
                 </div>
 
                 <div className="mt-3 p-2 bg-neutral-900 text-amber-400 rounded-lg text-center font-mono text-[11px] font-bold">
-                  Estimated Reference Fare: ₹{estimatedFare.toFixed(2)}
+                  Estimated Reference Fare: ₹{submittedFare.toFixed(2)}
                 </div>
               </div>
 
@@ -406,10 +416,11 @@ export default function InquiryForm({
                   onChange={(e) => setServiceType(e.target.value as ServiceType)}
                   className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition"
                 >
-                  <option value="Fleet Booking">Car Booking Services</option>
-                  <option value="Driver Relief">Driver Relief Services</option>
+                  <option value="Fleet Booking">Car Booking Services (Fleet Booking)</option>
+                  <option value="Driver Relief Services">Driver Relief Services</option>
                   <option value="Outstation Trip">Outstation Trips</option>
-                  <option value="Wedding Booking">Wedding & Event Bookings</option>
+                  <option value="Wedding Plan">Wedding Plan / Event Bookings</option>
+                  <option value="Premium Logistics Temporary">Premium Logistics Temporary</option>
                   <option value="Custom Requirement">Custom Requirements</option>
                 </select>
               </div>

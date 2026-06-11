@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Car, ShieldCheck, MapPin, Sparkles, Settings, ArrowRight } from 'lucide-react';
+import { Car, ShieldCheck, MapPin, Sparkles, Settings, ArrowRight, Truck } from 'lucide-react';
 import { ServiceType } from '../types';
 
 interface ServiceItem {
@@ -25,11 +25,11 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
       key: 'Fleet Booking',
       title: 'Car Booking Services',
       icon: Car,
-      description: 'Premium on-demand corporate flees and individual chauffeur vehicles for clean, timely, professional transits.',
+      description: 'Premium on-demand corporate fleets and individual chauffeur vehicles for clean, timely, professional transits.',
       examples: ['Corporate employee commutes', 'Inter-office shuttles', 'Airport VIP transfers', 'Daily vehicle dispatches'],
     },
     {
-      key: 'Driver Relief',
+      key: 'Driver Relief Services',
       title: 'Driver Relief Services',
       icon: ShieldCheck,
       description: 'Need a backup chauffeur or replacement driver? Elite, vetted relief drivers deployed instantly for your security.',
@@ -43,11 +43,18 @@ export default function ServicesSection({ onSelectService }: ServicesSectionProp
       examples: ['Weekend family travel plans', 'Inter-state meetings', 'Continuous multi-day tourism transits'],
     },
     {
-      key: 'Wedding Booking',
+      key: 'Wedding Plan',
       title: 'Wedding & Event Bookings',
       icon: Sparkles,
       description: 'Uncompromising grand transportation logs for special lifecycle moments, VIP guests, and grand entries.',
       examples: ['Luxury bridal cars', 'Group guest luxury coaches', 'Fast-tracked VIP service transport'],
+    },
+    {
+      key: 'Premium Logistics Temporary',
+      title: 'Premium Logistics Temporary',
+      icon: Truck,
+      description: 'Scale your temporal logistics and courier delivery solutions safely with secure, vetted courier escorts or high-value cargo drivers.',
+      examples: ['Valuable cargo escort transits', 'Sensitive legal document couriers', 'Peak seasonal distribution help'],
     },
     {
       key: 'Custom Requirement',

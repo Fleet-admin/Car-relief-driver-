@@ -353,6 +353,7 @@ export default function App() {
                   <InquiryForm
                     pickupLoc={pickupLoc}
                     dropLoc={dropLoc}
+                    selectedServiceType={formServiceSelector}
                     onSuccessSubmitted={handleInquiryFormSuccess}
                     onClearLocations={() => {
                       setPickupLoc(null);

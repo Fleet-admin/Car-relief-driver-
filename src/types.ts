@@ -8,8 +8,11 @@ export type InquiryStatus = 'New' | 'Contacted' | 'Confirmed' | 'Closed';
 export type ServiceType =
   | 'Fleet Booking'
   | 'Driver Relief'
+  | 'Driver Relief Services'
   | 'Outstation Trip'
   | 'Wedding Booking'
+  | 'Wedding Plan'
+  | 'Premium Logistics Temporary'
   | 'Custom Requirement';
 
 export interface Inquiry {
