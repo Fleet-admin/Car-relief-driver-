@@ -115,7 +115,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       
       if (result.success) {
         setSaveSuccessMsg(true);
-        onNotifyTriggered('Vehicle Category Pricing updated and saved to Supabase successfully!');
+        onNotifyTriggered('Vehicle Category Settings updated and saved to Supabase successfully!');
         
         // Refresh local UI state from the latest database values
         const freshCats = await SupabaseService.getVehicleCategories();
@@ -140,13 +140,13 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
     if (window.confirm('Do you want to reset all vehicle pricing categories back to system standard plans? This will overwrite live database settings.')) {
       setPricingError(null);
       const defaultConfigs: VehicleCategory[] = [
-        { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true },
-        { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true },
-        { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true },
-        { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true },
-        { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true },
-        { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true },
-        { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true },
+        { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true, passenger_capacity: 4, luggage_capacity: 2 },
+        { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true, passenger_capacity: 4, luggage_capacity: 3 },
+        { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true, passenger_capacity: 4, luggage_capacity: 3 },
+        { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true, passenger_capacity: 6, luggage_capacity: 5 },
+        { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true, passenger_capacity: 6, luggage_capacity: 5 },
+        { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true, passenger_capacity: 7, luggage_capacity: 6 },
+        { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true, passenger_capacity: 16, luggage_capacity: 12 },
       ];
       try {
         console.log('[Admin Panel UI] Initiating system reset defaults requests in database...');
@@ -185,12 +185,34 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       return;
     }
 
+    const baseFareStr = window.prompt("Enter Base Fare (₹):", "150");
+    if (baseFareStr === null) return;
+    const base_fare = Math.max(0, parseFloat(baseFareStr) || 150.00);
+
+    const perKmRateStr = window.prompt("Enter Rate Per Kilometer (₹):", "12");
+    if (perKmRateStr === null) return;
+    const per_km_rate = Math.max(0, parseFloat(perKmRateStr) || 12.00);
+
+    const minFareStr = window.prompt("Enter Minimum Fare (₹):", "150");
+    if (minFareStr === null) return;
+    const minimum_fare = Math.max(0, parseFloat(minFareStr) || 150.00);
+
+    const passengersStr = window.prompt("Enter Passenger Capacity:", "4");
+    if (passengersStr === null) return;
+    const passenger_capacity = Math.max(1, parseInt(passengersStr, 10) || 4);
+
+    const luggageStr = window.prompt("Enter Carry-on Luggage Capacity:", "2");
+    if (luggageStr === null) return;
+    const luggage_capacity = Math.max(0, parseInt(luggageStr, 10) || 2);
+
     const newCat: VehicleCategory = {
       id: crypto.randomUUID(),
       name: name.trim(),
-      base_fare: 150.00,
-      per_km_rate: 12.00,
-      minimum_fare: 150.00,
+      base_fare,
+      per_km_rate,
+      minimum_fare,
+      passenger_capacity,
+      luggage_capacity,
       active: true
     };
 
@@ -681,11 +703,11 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
               <div className="flex items-center gap-1.5">
                 <Sliders className="w-4 h-4 text-neutral-400" />
                 <h4 className="font-bold text-xs text-neutral-950 uppercase tracking-widest leading-none select-none">
-                  Vehicle Category Pricing {isFareMappingExpanded ? '▲' : '▼'}
+                  Vehicle Category Settings {isFareMappingExpanded ? '▲' : '▼'}
                 </h4>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-950 text-white font-bold uppercase tracking-wide shrink-0 font-sans">
-                Master Pricing Panel
+                Master Settings Panel
               </span>
             </button>
 
@@ -701,7 +723,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[11px] text-neutral-500 font-sans leading-normal">
-                      Directly map pricing formulas (Base Fare, rate per KM, and Minimum Fare) and status for every active vehicle category.
+                      Directly map pricing formulas (Base Fare, rate per KM, and Minimum Fare), passenger capacities, luggage capacities, and status for every active vehicle category.
                     </p>
                     <button
                       type="button"
@@ -758,7 +780,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                 </button>
                               </div>
                             </div>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                               <div>
                                 <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
                                   Base Fee (₹)
@@ -769,6 +791,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                     type="number"
                                     min={0}
                                     step={1}
+                                    required
                                     value={cat.base_fare}
                                     onChange={(e) => {
                                       const val = Math.max(0, parseFloat(e.target.value) || 0);
@@ -789,6 +812,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                     type="number"
                                     min={0}
                                     step={0.5}
+                                    required
                                     value={cat.per_km_rate}
                                     onChange={(e) => {
                                       const val = Math.max(0, parseFloat(e.target.value) || 0);
@@ -809,6 +833,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                     type="number"
                                     min={0}
                                     step={1}
+                                    required
                                     value={cat.minimum_fare || 0}
                                     onChange={(e) => {
                                       const val = Math.max(0, parseFloat(e.target.value) || 0);
@@ -817,6 +842,42 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                     className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
                                   />
                                 </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                  Passengers
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  step={1}
+                                  required
+                                  value={cat.passenger_capacity ?? 4}
+                                  onChange={(e) => {
+                                    const val = Math.max(1, parseInt(e.target.value, 10) || 4);
+                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, passenger_capacity: val } : c));
+                                  }}
+                                  className="w-full px-1.5 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                  Luggage
+                                </label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  required
+                                  value={cat.luggage_capacity ?? 2}
+                                  onChange={(e) => {
+                                    const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, luggage_capacity: val } : c));
+                                  }}
+                                  className="w-full px-1.5 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                />
                               </div>
                             </div>
                           </div>

@@ -771,67 +771,82 @@ export default function App() {
                         </p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4" id="fleet-category-showcase">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-6" id="fleet-category-showcase">
                         {vehicleCategories
                           .filter((cat) => cat.active)
                           .map((cat) => {
                             const details = resolveCategoryDetails(cat.name);
+                            
+                            // Dynamically read from Supabase with safe resolved backups
+                            const passengerCount = cat.passenger_capacity ?? 4;
+                            const luggageCount = cat.luggage_capacity ?? 2;
+                            
                             return (
                               <div
                                 key={cat.id || cat.name}
                                 id={`fleet-class-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
-                                className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:border-neutral-300 transform hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-stretch"
+                                className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-neutral-300 transform hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full group"
                               >
-                                {/* Graphic Aspect: Left side on desktop, top side on mobile */}
-                                <div className={`md:w-5/12 bg-gradient-to-br ${details.gradient} p-6 flex flex-col justify-between text-white shrink-0 relative min-h-[180px] overflow-hidden`}>
-                                  <div className="relative z-10">
-                                    <span className="text-[8px] tracking-widest font-bold uppercase bg-white/15 border border-white/10 px-2.5 py-1 rounded backdrop-blur-sm text-neutral-100 block w-fit">
-                                      Fleet Corporate Grade
+                                {/* Header / Mini Vehicle Image Graphic Area */}
+                                <div className={`h-48 bg-gradient-to-br ${details.gradient} p-6 flex flex-col justify-between text-white relative overflow-hidden shrink-0`}>
+                                  <div className="relative z-10 flex justify-between items-start">
+                                    <span className="text-[8px] tracking-widest font-extrabold uppercase bg-white/15 border border-white/10 px-2.5 py-1 rounded backdrop-blur-sm text-neutral-100">
+                                      Fleet Tier
                                     </span>
-                                    <h4 className="text-xl font-extrabold tracking-tight mt-3 text-white uppercase font-display leading-tight">
+                                    <span className="text-[9px] font-bold text-emerald-400 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                      Available
+                                    </span>
+                                  </div>
+
+                                  <div className="relative z-10">
+                                    <h4 className="text-xl font-extrabold tracking-tight mt-1 text-white uppercase font-display leading-tight group-hover:text-emerald-300 transition-colors">
                                       {cat.name}
                                     </h4>
+                                    <span className="text-[10px] text-neutral-300 font-semibold font-mono tracking-wide mt-1 block">
+                                      Engine: {details.fuelType}
+                                    </span>
                                   </div>
 
-                                  <div className="space-y-2 mt-auto relative z-10 pt-6">
-                                    <div className="text-[11px] font-semibold font-sans text-neutral-100 flex items-center gap-2">
-                                      <Users className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-                                      <span>{details.capacity}</span>
-                                    </div>
-                                    <div className="text-[11px] font-semibold font-sans text-neutral-100 flex items-center gap-2">
-                                      <Briefcase className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
-                                      <span>{details.luggage}</span>
-                                    </div>
-                                  </div>
-
-                                  {/* Absolute decorative gradient glow and minimalist car outline in background */}
-                                  <div className="absolute -right-4 -bottom-4 opacity-[0.09] scale-110 pointer-events-none transition-transform duration-500">
-                                    <Car className="w-44 h-44 text-white fill-current" />
+                                  {/* Absolute minimalist vehicle image graphic */}
+                                  <div className="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-[0.09] pointer-events-none transition-transform duration-500 group-hover:scale-110">
+                                    <Car className="w-48 h-48 text-white fill-current" />
                                   </div>
                                 </div>
 
-                                {/* Content Details aspect: info panel */}
-                                <div className="p-6 md:p-7 flex-1 flex flex-col justify-between space-y-4">
-                                  <div className="space-y-3">
-                                    <p className="text-xs text-neutral-600 leading-relaxed font-sans mt-0.5">
+                                {/* Body Content Area */}
+                                <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
+                                  <div className="space-y-4">
+                                    {/* Passenger and luggage badges */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-800 text-[11px] font-bold select-none font-sans">
+                                        👥 {passengerCount} Passengers
+                                      </span>
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-800 text-[11px] font-bold select-none font-sans">
+                                        🧳 {luggageCount} Carry-ons
+                                      </span>
+                                    </div>
+
+                                    {/* Description text */}
+                                    <p className="text-xs text-neutral-600 leading-relaxed font-sans">
                                       {details.description}
                                     </p>
 
-                                    {/* Pricing Structure Display */}
-                                    <div className="p-3 bg-neutral-950 text-white rounded-xl border border-neutral-850 gap-2 text-center font-mono text-[9px] grid grid-cols-3 shadow-md">
-                                      <div className="border-r border-neutral-805 py-0.5">
+                                    {/* SaaS-style Pricing block */}
+                                    <div className="p-3.5 bg-neutral-950 text-white rounded-2xl border border-neutral-850 gap-2 text-center font-mono text-[9px] grid grid-cols-3 shadow-md">
+                                      <div className="border-r border-neutral-800 py-0.5">
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Base Fare
                                         </span>
-                                        <span className="font-extrabold text-xs text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400">
                                           ₹{cat.base_fare.toFixed(0)}
                                         </span>
                                       </div>
-                                      <div className="border-r border-neutral-805 py-0.5">
+                                      <div className="border-r border-neutral-800 py-0.5">
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Per KM
                                         </span>
-                                        <span className="font-extrabold text-xs text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400">
                                           ₹{cat.per_km_rate.toFixed(0)}
                                         </span>
                                       </div>
@@ -839,30 +854,21 @@ export default function App() {
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Min Fare
                                         </span>
-                                        <span className="font-extrabold text-xs text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400">
                                           ₹{(cat.minimum_fare ?? cat.base_fare).toFixed(0)}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div className="space-y-3 pt-1 border-t border-neutral-100 font-sans">
-                                    <div className="text-[10px] text-neutral-500 flex justify-between items-center">
-                                      <span className="truncate max-w-[124px]">
-                                        Engine: <strong className="text-neutral-700 font-semibold">{details.fuelType}</strong>
-                                      </span>
-                                      <span className="text-emerald-700 font-bold flex items-center gap-1 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] border border-emerald-100/60 uppercase">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        Vetted Grade
-                                      </span>
-                                    </div>
-
+                                  {/* Action Booking CTA Button */}
+                                  <div className="pt-2 border-t border-neutral-100 font-sans">
                                     <button
                                       onClick={() => handleSelectCategoryAndRoute(cat.name, 'Fleet Booking')}
-                                      className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
+                                      className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
                                     >
-                                      Book This Fleet Class
-                                      <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
+                                      Book Now
+                                      <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
                                     </button>
                                   </div>
                                 </div>

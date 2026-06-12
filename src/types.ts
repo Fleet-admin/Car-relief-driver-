@@ -42,6 +42,8 @@ export interface VehicleCategory {
   active: boolean;
   created_at?: string;
   updated_at?: string;
+  passenger_capacity?: number;
+  luggage_capacity?: number;
 }
 
 export interface DashboardMetrics {
