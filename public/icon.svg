@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="112" fill="#111827"/>
+  <!-- Sleek premium line-art car logo in the center -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" transform="translate(56, 120)">
+    <!-- Cabin Roof -->
+    <path d="M120,160 L160,70 L240,70 L280,160" />
+    <!-- Rear body & tail -->
+    <path d="M40,160 L120,160" />
+    <!-- Front bonnet -->
+    <path d="M280,160 L360,160 L350,210 L50,210 L40,160 Z" />
+    <!-- Front wheel arch -->
+    <circle cx="110" cy="220" r="45" fill="#111827" stroke="#FFFFFF" stroke-width="20" />
+    <!-- Rear wheel arch -->
+    <circle cx="290" cy="220" r="45" fill="#111827" stroke="#FFFFFF" stroke-width="20" />
+    <!-- Wheel Details Inner Spokes -->
+    <circle cx="110" cy="220" r="15" fill="#FFFFFF" />
+    <circle cx="290" cy="220" r="15" fill="#FFFFFF" />
+    <!-- Lights -->
+    <path d="M350,175 L360,175" stroke="#FBBF24" stroke-width="16" />
+    <path d="M50,175 L40,175" stroke="#EF4444" stroke-width="16" />
+  </g>
+</svg>

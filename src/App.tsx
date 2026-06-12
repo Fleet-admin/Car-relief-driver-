@@ -153,9 +153,9 @@ export default function App() {
   const [formServiceSelector, setFormServiceSelector] = useState<ServiceType>('Fleet Booking');
 
   // Contact configurations
-  const contactPhone = '+1 (555) 019-2834';
-  const contactWhatsapp = '+15550192834';
-  const contactEmail = 'dispatch@caranddriverrelief.com';
+  const contactPhone = '8637323873';
+  const contactWhatsapp = '8637323873';
+  const contactEmail = 'bappa.admin@gmail.com';
 
   // System-wide notification toast state
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
