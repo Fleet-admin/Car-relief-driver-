@@ -299,7 +299,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
         if (Notification.permission === 'granted') {
           new Notification('🔔 New Inquiry Alert!', {
             body: `${payload.name} (${payload.service_type}) requests service on ${payload.travel_date}.`,
-            icon: '/assets/icon.png',
+            icon: '/icon-192x192.png',
           });
         }
       } else if (eventType === 'UPDATE') {
@@ -382,8 +382,8 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto my-16 bg-white border border-neutral-200 rounded-2xl p-8 shadow-xl text-center" id="admin-passcode-gate">
-        <div className="w-12 h-12 rounded-full bg-neutral-900 text-amber-400 flex items-center justify-center mx-auto mb-4">
-          <Lock className="w-6 h-6" />
+        <div className="w-16 h-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md overflow-hidden p-1.5">
+          <img src="/icon.svg" alt="Car & Driver Relief" className="w-full h-full object-contain" />
         </div>
         <h3 className="text-xl font-bold text-neutral-950 tracking-tight">Admin Portal Authorization</h3>
         <p className="text-xs text-neutral-500 mt-2 font-sans">
