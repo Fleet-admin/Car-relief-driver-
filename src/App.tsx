@@ -132,18 +132,7 @@ function resolveCategoryDetails(name: string) {
   }
 
   // 4. Engine/Fuel class
-  let fuelType = 'Clean Petrol / Diesel';
-  if (lower.includes('hatchback') || lower.includes('economy')) {
-    fuelType = 'Petrol / Automatic Hybrid';
-  } else if (lower.includes('sedan')) {
-    fuelType = 'Clean Petrol / Electric';
-  } else if (lower.includes('suv')) {
-    fuelType = 'Turbo Diesel / Automatic AWD';
-  } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('ertiga')) {
-    fuelType = 'Premium Turbo Diesel';
-  } else if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus')) {
-    fuelType = 'High-displacement Diesel';
-  }
+  let fuelType = 'petrol / diesel';
 
   // 5. Short description fallbacks
   let description = `Premium standard ${name} class vehicle from our vetted fleet. Extensively detailed and optimized for elite passenger safety, climate control, and unmatched travel reliability.`;
