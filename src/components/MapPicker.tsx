@@ -398,23 +398,20 @@ export default function MapPicker({
         <div ref={mapContainerRef} className="w-full h-full z-10" />
 
         {/* Floating Instruction Map overlay Banner */}
-        <div className="absolute bottom-3 left-3 right-3 bg-neutral-900/95 backdrop-blur-sm text-white py-2 px-3 rounded-lg text-[11px] font-sans flex items-center justify-between gap-2 shadow-lg z-[1000] pointer-events-auto">
+        <div className="absolute bottom-3 left-3 right-3 bg-neutral-900/95 backdrop-blur-sm text-white py-2 px-4 rounded-lg text-[11px] font-sans flex items-center shadow-lg z-[1000] pointer-events-auto">
           <p className="leading-snug">
             {activePinType === 'pickup' ? (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
                 Click on the map or search to place <strong className="text-emerald-300">Pickup Pin</strong>
               </span>
             ) : (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse inline-block" />
                 Click on the map or search to place <strong className="text-red-300">Destination Pin</strong>
               </span>
             )}
           </p>
-          <span className="text-[10px] bg-neutral-750 px-2 py-0.5 rounded border border-neutral-700 uppercase tracking-widest text-neutral-300">
-            Leaflet Map
-          </span>
         </div>
       </div>
 

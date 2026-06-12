@@ -627,14 +627,11 @@ export default function App() {
 
                       {/* Left: Map Picker */}
                       <div className="lg:col-span-7 flex flex-col bg-white p-6 border border-neutral-200 rounded-2xl shadow-sm lg:h-[840px]">
-                        <div className="flex items-center justify-between pb-4 border-b border-neutral-100 shrink-0 mb-4">
+                        <div className="flex items-center pb-4 border-b border-neutral-100 shrink-0 mb-4">
                           <div>
                             <h4 className="font-bold text-sm text-neutral-900">Map Pin Placement Tool</h4>
                             <p className="text-[11px] text-neutral-400 font-sans">Drag markers or choose locations</p>
                           </div>
-                          <span className="text-[11px] font-bold text-neutral-500 uppercase bg-neutral-100 px-2.5 py-0.5 rounded">
-                            OpenStreetMap Data
-                          </span>
                         </div>
 
                         <div className="flex-1 min-h-[400px] lg:min-h-0">
