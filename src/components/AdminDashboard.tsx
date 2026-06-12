@@ -1086,28 +1086,31 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                               <span className="block text-[9px] uppercase font-bold text-neutral-400 tracking-wider">
                                 Logistical Route Details
                               </span>
-                              <div className="flex items-start gap-2.5 p-3.5 border border-neutral-150 bg-neutral-50 rounded-xl text-xs text-neutral-700 font-sans leading-relaxed">
-                                <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                                <div className="space-y-1.5 w-full">
-                                  <div>
-                                    <span className="text-[10px] text-neutral-450 font-bold uppercase mr-1.5">
-                                      Pickup Point:
-                                    </span>
-                                    <span className="font-semibold text-neutral-900">
-                                      {inq.pickup_location}
-                                    </span>
-                                  </div>
-                                  {inq.drop_location && (
-                                    <div className="border-t border-neutral-200 pt-1.5 mt-1.5">
-                                      <span className="text-[10px] text-neutral-450 font-bold uppercase mr-1.5">
-                                        Dropoff Destination:
-                                      </span>
-                                      <span className="font-semibold text-neutral-900">
-                                        {inq.drop_location}
-                                      </span>
+                              <div className="p-3.5 border border-neutral-150 bg-neutral-50 rounded-xl text-xs text-neutral-700 font-sans leading-relaxed space-y-3">
+                                <div className="flex items-start gap-2.5">
+                                  <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-[10px] text-neutral-450 font-bold uppercase leading-none mb-1">
+                                      Pickup Point
                                     </div>
-                                  )}
+                                    <div className="font-semibold text-neutral-900">
+                                      {inq.pickup_location}
+                                    </div>
+                                  </div>
                                 </div>
+                                {inq.drop_location && (
+                                  <div className="border-t border-neutral-200 pt-3 flex items-start gap-2.5">
+                                    <MapPin className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-[10px] text-neutral-450 font-bold uppercase leading-none mb-1">
+                                        Dropoff Destination
+                                      </div>
+                                      <div className="font-semibold text-neutral-900">
+                                        {inq.drop_location}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
