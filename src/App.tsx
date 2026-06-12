@@ -560,7 +560,7 @@ export default function App() {
                       <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
                       <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
-                      <div className="px-6 py-16 md:p-16 text-center max-w-4xl mx-auto space-y-6">
+                      <div className="px-6 py-12 md:py-20 text-center max-w-4xl mx-auto space-y-6">
                         <span className="text-[10px] uppercase font-bold tracking-widest text-[#10B981] bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full inline-block">
                           ★ Live Geotracking & Vetted Fleet Relief
                         </span>
@@ -603,26 +603,6 @@ export default function App() {
                             </svg>
                             WhatsApp Us
                           </a>
-                        </div>
-
-                        {/* Highlights row */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-10 border-t border-neutral-850 mt-4 text-center">
-                          <div>
-                            <span className="block text-xl font-bold text-emerald-400">100% Vetted</span>
-                            <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-sans">Certified Chauffeurs</span>
-                          </div>
-                          <div>
-                            <span className="block text-xl font-bold text-emerald-400">24/7 Hotline</span>
-                            <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-sans">Always Active</span>
-                          </div>
-                          <div>
-                            <span className="block text-xl font-bold text-emerald-400">Flat Rates</span>
-                            <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-sans">No hidden fees</span>
-                          </div>
-                          <div>
-                            <span className="block text-xl font-bold text-emerald-400">Realtime Sync</span>
-                            <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-sans">Enterprise Cloud DB</span>
-                          </div>
                         </div>
                       </div>
                     </section>
