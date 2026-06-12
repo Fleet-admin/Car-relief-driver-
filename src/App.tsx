@@ -50,6 +50,124 @@ interface LocationData {
   lng: number;
 }
 
+// Dynamically resolves metadata for custom & standard vehicle categories from name keywords
+function resolveCategoryDetails(name: string) {
+  const lower = name.toLowerCase();
+  
+  // 1. Dynamic passenger capacity detector
+  let capacity = '4 Passengers';
+  const paxRegexes = [
+    /(\d+)\s*(?:pax|passengers|seater|seats|persons|people|person|seat)/i,
+    /(\d+)\s*-seater/i,
+    /(\d+)\s*s/i
+  ];
+  for (const regex of paxRegexes) {
+    const match = name.match(regex);
+    if (match) {
+      capacity = `${match[1]} Passengers`;
+      break;
+    }
+  }
+  
+  // Keyword fallback if regex doesn't match
+  if (!name.match(/(?:pax|passengers|seater|seats|persons|people|person|seat|-seater)/i)) {
+    if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus') || lower.includes('coach')) {
+      capacity = '12 - 20 Passengers';
+    } else if (lower.includes('suv') && (lower.includes('7') || lower.includes('seven'))) {
+      capacity = '7 Passengers';
+    } else if (lower.includes('suv')) {
+      capacity = '6 Passengers';
+    } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('ertiga') || lower.includes('luxury')) {
+      capacity = '7 Passengers';
+    } else if (lower.includes('hatchback') || lower.includes('economy') || lower.includes('mini')) {
+      capacity = '4 Passengers';
+    } else if (lower.includes('sedan')) {
+      capacity = '4 Passengers';
+    }
+  }
+
+  // 2. Dynamic luggage capacity detector
+  let luggage = '3 Standard Bags';
+  const bagRegexes = [
+    /(\d+)\s*(?:bags|luggage|suitcases|packages|bag|suitcase|cargo)/i
+  ];
+  for (const regex of bagRegexes) {
+    const match = name.match(regex);
+    if (match) {
+      luggage = `${match[1]} Bags`;
+      break;
+    }
+  }
+  
+  if (!name.match(/(?:bags|luggage|suitcases|packages|bag|suitcase|cargo)/i)) {
+    if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus') || lower.includes('coach')) {
+      luggage = '12+ Heavy Bags';
+    } else if (lower.includes('suv')) {
+      luggage = '5 Medium Bags';
+    } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('luxury') || lower.includes('ertiga')) {
+      luggage = '6 Large Packages';
+    } else if (lower.includes('hatchback') || lower.includes('economy') || lower.includes('mini')) {
+      luggage = '2 Carry-ons';
+    } else if (lower.includes('sedan')) {
+      luggage = '3 Medium Suitcases';
+    }
+  }
+
+  // 3. Esthetic design visual gradient
+  let gradient = 'from-neutral-800 to-neutral-950'; // Deep Slate Luxury default
+  if (lower.includes('hatchback') || lower.includes('economy') || lower.includes('mini')) {
+    gradient = 'from-zinc-700 to-zinc-900'; // Cool light-medium gray
+  } else if (lower.includes('sedan') && (lower.includes('premium') || lower.includes('luxury') || lower.includes('elite'))) {
+    gradient = 'from-slate-800 to-neutral-950'; // High executive dark
+  } else if (lower.includes('sedan')) {
+    gradient = 'from-neutral-800 to-neutral-950'; // standard premium dark
+  } else if (lower.includes('suv') && (lower.includes('premium') || lower.includes('luxury'))) {
+    gradient = 'from-cyan-950 to-neutral-900'; // Deep emerald teal
+  } else if (lower.includes('suv')) {
+    gradient = 'from-cyan-900 to-neutral-950'; // standard SUV
+  } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('premium') || lower.includes('luxury') || lower.includes('ertiga')) {
+    gradient = 'from-indigo-950 to-neutral-950'; // Royal indigo/blue
+  } else if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus') || lower.includes('coach')) {
+    gradient = 'from-neutral-900 to-neutral-950'; // Heavy industrial charcoal
+  }
+
+  // 4. Engine/Fuel class
+  let fuelType = 'Clean Petrol / Diesel';
+  if (lower.includes('hatchback') || lower.includes('economy')) {
+    fuelType = 'Petrol / Automatic Hybrid';
+  } else if (lower.includes('sedan')) {
+    fuelType = 'Clean Petrol / Electric';
+  } else if (lower.includes('suv')) {
+    fuelType = 'Turbo Diesel / Automatic AWD';
+  } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('ertiga')) {
+    fuelType = 'Premium Turbo Diesel';
+  } else if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus')) {
+    fuelType = 'High-displacement Diesel';
+  }
+
+  // 5. Short description fallbacks
+  let description = `Premium standard ${name} class vehicle from our vetted fleet. Extensively detailed and optimized for elite passenger safety, climate control, and unmatched travel reliability.`;
+  if (lower.includes('hatchback') || lower.includes('economy') || lower.includes('mini')) {
+    description = 'Highly efficient compact city hatchbacks. Pristine condition, optimized for cost-sensitive city runs and agile daily transits.';
+  } else if (lower.includes('sedan')) {
+    description = 'Elegant business sedans offering perfect cabin legroom, silent travel acoustics, dual-zone climate blowers, and clean layout.';
+  } else if (lower.includes('suv')) {
+    description = 'Commanding high-clearance sports utility vehicles. Features robust luggage capacity, offroad utility safety parameters.';
+  } else if (lower.includes('innova') || lower.includes('mpv') || lower.includes('ertiga')) {
+    description = 'Unmatched executive MPV cruisers (Premium Innova class) featuring leather captain chairs, personal charge ports, and grand VIP privacy.';
+  } else if (lower.includes('tempo') || lower.includes('traveller') || lower.includes('bus') || lower.includes('coach')) {
+    description = 'Large volume transport liners (Tempo Traveller standard) customizable with individual luxury highback recliners and robust cargo spaces.';
+  }
+
+  return {
+    capacity,
+    luggage,
+    gradient,
+    fuelType,
+    description
+  };
+}
+
 export default function App() {
   // Navigation: 'client' or 'admin' (persisted across page refreshes)
   const [activeTab, setActiveTab] = useState<'client' | 'admin'>(() => {
@@ -621,134 +739,138 @@ export default function App() {
                     </div>
 
                     {/* Category Cards Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4" id="fleet-category-showcase">
-                      {/* Class Card Generation */}
-                      {[
-                        {
-                          key: 'Economy',
-                          matchKey: 'hatchback',
-                          fallback: { base: 100.0, perKm: 10.0, min: 100.0 },
-                          desc: 'Highly efficient compact city hatchbacks. Pristine condition, optimized for cost-sensitive city runs and agile daily transits.',
-                          capacity: '4 Passengers',
-                          bags: '2 Carry-ons',
-                          fuel: 'Petrol / Automatic Hybrid',
-                          gradient: 'from-zinc-700 to-zinc-900'
-                        },
-                        {
-                          key: 'Sedan',
-                          matchKey: 'sedan',
-                          fallback: { base: 150.0, perKm: 12.0, min: 150.0 },
-                          desc: 'Elegant business sedans offering perfect cabin legroom, silent travel acoustics, dual-zone climate blowers, and clean layout.',
-                          capacity: '4 Passengers',
-                          bags: '3 Medium Suitcases',
-                          fuel: 'Clean Petrol / Electric',
-                          gradient: 'from-neutral-800 to-neutral-950'
-                        },
-                        {
-                          key: 'SUV',
-                          matchKey: 'suv',
-                          fallback: { base: 200.0, perKm: 15.0, min: 200.0 },
-                          desc: 'Commanding high-clearance sports utility vehicles. Features robust luggage capacity, offroad utility safety parameters.',
-                          capacity: '6 Passengers',
-                          bags: '5 Large Cargo Bags',
-                          fuel: 'Turbo diesel / Automatic AWD',
-                          gradient: 'from-cyan-950 to-neutral-900'
-                        },
-                        {
-                          key: 'Luxury',
-                          matchKey: 'innova',
-                          fallback: { base: 250.0, perKm: 16.0, min: 250.0 },
-                          desc: 'Unmatched executive MPV cruisers (Premium Innova class) featuring leather captain chairs, personal charge ports, and grand VIP privacy screens.',
-                          capacity: '7 Passengers',
-                          bags: '6 Class Bags',
-                          fuel: 'Premium Turbo Diesel',
-                          gradient: 'from-indigo-950 to-neutral-950'
-                        },
-                        {
-                          key: 'Premium',
-                          matchKey: 'tempo',
-                          fallback: { base: 500.0, perKm: 25.0, min: 500.0 },
-                          desc: 'Large volume transport liners (Tempo Traveller standard) customizable with individual luxury highback recliners and robust cargo spaces.',
-                          capacity: '12 - 20 Passengers',
-                          bags: '12+ Heavy Volumes',
-                          fuel: 'High-displacement Diesel',
-                          gradient: 'from-neutral-900 to-neutral-950'
-                        }
-                      ].map((classConfig) => {
-                        const livePrice = findDbPricing(classConfig.matchKey, classConfig.fallback);
-                        return (
-                          <div
-                            key={classConfig.key}
-                            id={`fleet-class-${classConfig.key.toLowerCase()}`}
-                            className="bg-white border border-neutral-205 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row hover:shadow-md transition-shadow"
-                          >
-                            {/* Graphic Side */}
-                            <div className={`md:w-5/12 bg-gradient-to-br ${classConfig.gradient} p-5 flex flex-col justify-between text-white shrink-0 relative min-h-[200px]`}>
-                              <div>
-                                <span className="text-[8px] tracking-widest font-bold uppercase bg-white/20 px-2 py-0.5 rounded text-neutral-100">
-                                  Standard Fleet Class
-                                </span>
-                                <h4 className="text-xl font-extrabold tracking-tight mt-2.5">{classConfig.key} Class</h4>
-                              </div>
-
-                              <div className="space-y-1.5 mt-auto">
-                                <div className="text-[11px] font-sans text-neutral-200 flex items-center gap-1.5">
-                                  <Users className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                  <span>{classConfig.capacity}</span>
-                                </div>
-                                <div className="text-[11px] font-sans text-neutral-200 flex items-center gap-1.5">
-                                  <Briefcase className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                                  <span>{classConfig.bags}</span>
-                                </div>
-                              </div>
-
-                              <div className="absolute right-0 bottom-0 opacity-[0.08] translate-y-4 translate-x-4">
-                                <Car className="w-40 h-40" />
-                              </div>
-                            </div>
-
-                            {/* Info Side */}
+                    {loadingCategories ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4" id="fleet-category-skeleton">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm flex flex-col md:flex-row h-96 md:h-64 animate-pulse">
+                            <div className="md:w-5/12 bg-neutral-100 h-40 md:h-full" />
                             <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                              <div className="space-y-2">
-                                <p className="text-xs text-neutral-600 leading-relaxed font-sans">
-                                  {classConfig.desc}
-                                </p>
-
-                                <div className="p-2.5 bg-neutral-950 text-white rounded-xl border border-neutral-850 grid grid-cols-3 gap-2 text-center font-mono text-[9px]">
-                                  <div>
-                                    <span className="block text-neutral-500 font-sans">Base Rate</span>
-                                    <span className="font-bold text-emerald-400">₹{livePrice.base_fare.toFixed(0)}</span>
-                                  </div>
-                                  <div>
-                                    <span className="block text-neutral-500 font-sans">Per KM Rate</span>
-                                    <span className="font-bold text-emerald-400">₹{livePrice.per_km_rate.toFixed(0)}</span>
-                                  </div>
-                                  <div>
-                                    <span className="block text-neutral-500 font-sans">Min Fare</span>
-                                    <span className="font-bold text-emerald-400">₹{livePrice.minimum_fare.toFixed(0)}</span>
-                                  </div>
-                                </div>
-                              </div>
-
                               <div className="space-y-3">
-                                <div className="text-[10px] font-sans text-neutral-500 border-t border-neutral-100 pt-2.5 flex justify-between">
-                                  <span>Engine Code: <strong>{classConfig.fuel}</strong></span>
-                                  <span className="text-emerald-600 font-bold">● Active Class</span>
-                                </div>
-
-                                <button
-                                  onClick={() => handleSelectCategoryAndRoute(livePrice.name, 'Fleet Booking')}
-                                  className="w-full py-2 bg-neutral-900 group-hover:bg-neutral-850 hover:bg-neutral-850 text-white text-[11px] font-semibold uppercase tracking-wider rounded-xl transition flex items-center justify-center gap-1.5"
-                                >
-                                  Book {classConfig.key} Class
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="h-4 bg-neutral-200 rounded w-1/3" />
+                                <div className="h-3 bg-neutral-200 rounded w-full" />
+                                <div className="h-3 bg-neutral-200 rounded w-5/6" />
                               </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="h-10 bg-neutral-200 rounded" />
+                                <div className="h-10 bg-neutral-200 rounded" />
+                                <div className="h-10 bg-neutral-200 rounded" />
+                              </div>
+                              <div className="h-10 bg-neutral-200 rounded w-full" />
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    ) : vehicleCategories.filter(cat => cat.active).length === 0 ? (
+                      <div className="bg-white border border-neutral-200 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm" id="fleet-empty-state">
+                        <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-neutral-100">
+                          <Car className="w-8 h-8 text-neutral-400" />
+                        </div>
+                        <h4 className="text-base font-bold text-neutral-900 tracking-tight">No Fleet Classes Active</h4>
+                        <p className="text-xs text-neutral-550 mt-1 max-w-sm mx-auto font-sans leading-relaxed">
+                          All fleet category options are currently toggled offline in the Admin Portal. Navigate to the Admin Portal (Top Right) to add or activate vehicle categories.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4" id="fleet-category-showcase">
+                        {vehicleCategories
+                          .filter((cat) => cat.active)
+                          .map((cat) => {
+                            const details = resolveCategoryDetails(cat.name);
+                            return (
+                              <div
+                                key={cat.id || cat.name}
+                                id={`fleet-class-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
+                                className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:border-neutral-300 transform hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row items-stretch"
+                              >
+                                {/* Graphic Aspect: Left side on desktop, top side on mobile */}
+                                <div className={`md:w-5/12 bg-gradient-to-br ${details.gradient} p-6 flex flex-col justify-between text-white shrink-0 relative min-h-[180px] overflow-hidden`}>
+                                  <div className="relative z-10">
+                                    <span className="text-[8px] tracking-widest font-bold uppercase bg-white/15 border border-white/10 px-2.5 py-1 rounded backdrop-blur-sm text-neutral-100 block w-fit">
+                                      Fleet Corporate Grade
+                                    </span>
+                                    <h4 className="text-xl font-extrabold tracking-tight mt-3 text-white uppercase font-display leading-tight">
+                                      {cat.name}
+                                    </h4>
+                                  </div>
+
+                                  <div className="space-y-2 mt-auto relative z-10 pt-6">
+                                    <div className="text-[11px] font-semibold font-sans text-neutral-100 flex items-center gap-2">
+                                      <Users className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+                                      <span>{details.capacity}</span>
+                                    </div>
+                                    <div className="text-[11px] font-semibold font-sans text-neutral-100 flex items-center gap-2">
+                                      <Briefcase className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+                                      <span>{details.luggage}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Absolute decorative gradient glow and minimalist car outline in background */}
+                                  <div className="absolute -right-4 -bottom-4 opacity-[0.09] scale-110 pointer-events-none transition-transform duration-500">
+                                    <Car className="w-44 h-44 text-white fill-current" />
+                                  </div>
+                                </div>
+
+                                {/* Content Details aspect: info panel */}
+                                <div className="p-6 md:p-7 flex-1 flex flex-col justify-between space-y-4">
+                                  <div className="space-y-3">
+                                    <p className="text-xs text-neutral-600 leading-relaxed font-sans mt-0.5">
+                                      {details.description}
+                                    </p>
+
+                                    {/* Pricing Structure Display */}
+                                    <div className="p-3 bg-neutral-950 text-white rounded-xl border border-neutral-850 gap-2 text-center font-mono text-[9px] grid grid-cols-3 shadow-md">
+                                      <div className="border-r border-neutral-805 py-0.5">
+                                        <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
+                                          Base Fare
+                                        </span>
+                                        <span className="font-extrabold text-xs text-emerald-400">
+                                          ₹{cat.base_fare.toFixed(0)}
+                                        </span>
+                                      </div>
+                                      <div className="border-r border-neutral-805 py-0.5">
+                                        <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
+                                          Per KM
+                                        </span>
+                                        <span className="font-extrabold text-xs text-emerald-400">
+                                          ₹{cat.per_km_rate.toFixed(0)}
+                                        </span>
+                                      </div>
+                                      <div className="py-0.5">
+                                        <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
+                                          Min Fare
+                                        </span>
+                                        <span className="font-extrabold text-xs text-emerald-400">
+                                          ₹{(cat.minimum_fare ?? cat.base_fare).toFixed(0)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3 pt-1 border-t border-neutral-100 font-sans">
+                                    <div className="text-[10px] text-neutral-500 flex justify-between items-center">
+                                      <span className="truncate max-w-[124px]">
+                                        Engine: <strong className="text-neutral-700 font-semibold">{details.fuelType}</strong>
+                                      </span>
+                                      <span className="text-emerald-700 font-bold flex items-center gap-1 shrink-0 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] border border-emerald-100/60 uppercase">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        Vetted Grade
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      onClick={() => handleSelectCategoryAndRoute(cat.name, 'Fleet Booking')}
+                                      className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      Book This Fleet Class
+                                      <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
