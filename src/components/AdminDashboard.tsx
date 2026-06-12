@@ -765,8 +765,8 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                     }}
                                     className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-950 w-3.5 h-3.5"
                                   />
-                                  <span className={`text-[10px] font-bold uppercase font-sans ${cat.active ? 'text-emerald-700' : 'text-neutral-400'}`}>
-                                    {cat.active ? 'Active' : 'Inactive'}
+                                  <span className={`text-[10px] font-bold uppercase font-sans ${cat.active ? 'text-emerald-700' : 'text-amber-600 font-semibold'}`}>
+                                    {cat.active ? 'Available' : 'Under Maintenance'}
                                   </span>
                                 </label>
                                 {/* Delete action button */}

@@ -740,47 +740,57 @@ export default function App() {
                           </div>
                         ))}
                       </div>
-                    ) : vehicleCategories.filter(cat => cat.active).length === 0 ? (
+                    ) : vehicleCategories.length === 0 ? (
                       <div className="bg-white border border-neutral-200 rounded-2xl p-12 text-center max-w-lg mx-auto shadow-sm" id="fleet-empty-state">
                         <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-neutral-100">
                           <Car className="w-8 h-8 text-neutral-400" />
                         </div>
-                        <h4 className="text-base font-bold text-neutral-900 tracking-tight">No Fleet Classes Active</h4>
+                        <h4 className="text-base font-bold text-neutral-900 tracking-tight">No Fleet Classes Available</h4>
                         <p className="text-xs text-neutral-550 mt-1 max-w-sm mx-auto font-sans leading-relaxed">
-                          All fleet category options are currently toggled offline in the Admin Portal. Navigate to the Admin Portal (Top Right) to add or activate vehicle categories.
+                          All fleet category options are currently toggled offline or empty in the Admin Portal. Navigate to the Admin Portal (Top Right) to add vehicle categories.
                         </p>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-6" id="fleet-category-showcase">
                         {vehicleCategories
-                          .filter((cat) => cat.active)
                           .map((cat) => {
                             const details = resolveCategoryDetails(cat.name);
                             
                             // Dynamically read from Supabase with safe resolved backups
                             const passengerCount = cat.passenger_capacity ?? 4;
                             const luggageCount = cat.luggage_capacity ?? 2;
+                            const isAvailable = cat.active;
                             
                             return (
                               <div
                                 key={cat.id || cat.name}
                                 id={`fleet-class-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
-                                className="bg-white border border-neutral-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-neutral-300 transform hover:-translate-y-1.5 transition-all duration-300 flex flex-col h-full group"
+                                className={`bg-white border rounded-3xl overflow-hidden shadow-sm flex flex-col h-full transition-all duration-300 ${
+                                  isAvailable 
+                                    ? 'border-neutral-200 hover:shadow-xl hover:border-neutral-300 transform hover:-translate-y-1.5 group' 
+                                    : 'border-neutral-200 opacity-60 saturate-[0.65]'
+                                }`}
                               >
                                 {/* Header / Mini Vehicle Image Graphic Area */}
                                 <div className={`h-48 bg-gradient-to-br ${details.gradient} p-6 flex flex-col justify-between text-white relative overflow-hidden shrink-0`}>
                                   <div className="relative z-10 flex justify-between items-start">
-                                    <span className="text-[8px] tracking-widest font-extrabold uppercase bg-white/15 border border-white/10 px-2.5 py-1 rounded backdrop-blur-sm text-neutral-100">
+                                    <span className="text-[8px] tracking-widest font-extrabold uppercase bg-white/11 px-2 py-0.5 rounded backdrop-blur-sm text-neutral-100">
                                       Fleet Tier
                                     </span>
-                                    <span className="text-[9px] font-bold text-emerald-400 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                      Available
-                                    </span>
+                                    {isAvailable ? (
+                                      <span className="text-[9px] font-bold text-emerald-400 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        Available
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-bold text-amber-300 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-amber-950/92 px-2.5 py-0.5 rounded border border-amber-600/40">
+                                        UNDER MAINTENANCE
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div className="relative z-10">
-                                    <h4 className="text-xl font-extrabold tracking-tight mt-1 text-white uppercase font-display leading-tight group-hover:text-emerald-300 transition-colors">
+                                    <h4 className={`text-xl font-extrabold tracking-tight mt-1 text-white uppercase font-display leading-tight ${isAvailable ? 'group-hover:text-emerald-300 transition-colors' : ''}`}>
                                       {cat.name}
                                     </h4>
                                     <span className="text-[10px] text-neutral-300 font-semibold font-mono tracking-wide mt-1 block">
@@ -789,7 +799,7 @@ export default function App() {
                                   </div>
 
                                   {/* Absolute minimalist vehicle image graphic */}
-                                  <div className="absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-[0.09] pointer-events-none transition-transform duration-500 group-hover:scale-110">
+                                  <div className={`absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-[0.09] pointer-events-none transition-transform duration-500 ${isAvailable ? 'group-hover:scale-110' : ''}`}>
                                     <Car className="w-48 h-48 text-white fill-current" />
                                   </div>
                                 </div>
@@ -811,6 +821,14 @@ export default function App() {
                                     <p className="text-xs text-neutral-600 leading-relaxed font-sans">
                                       {details.description}
                                     </p>
+
+                                    {/* Optional helper text for under maintenance */}
+                                    {!isAvailable && (
+                                      <div className="text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200/50 rounded-xl p-3 flex items-start gap-1.5 font-sans leading-relaxed">
+                                        <span className="shrink-0 text-[11px]">⚠️</span>
+                                        <span>This vehicle category is temporarily unavailable.</span>
+                                      </div>
+                                    )}
 
                                     {/* SaaS-style Pricing block */}
                                     <div className="p-3.5 bg-neutral-950 text-white rounded-2xl border border-neutral-850 gap-2 text-center font-mono text-[9px] grid grid-cols-3 shadow-md">
@@ -843,13 +861,22 @@ export default function App() {
 
                                   {/* Action Booking CTA Button */}
                                   <div className="pt-2 border-t border-neutral-100 font-sans">
-                                    <button
-                                      onClick={() => handleSelectCategoryAndRoute(cat.name, 'Fleet Booking')}
-                                      className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
-                                    >
-                                      Book Now
-                                      <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
-                                    </button>
+                                    {isAvailable ? (
+                                      <button
+                                        onClick={() => handleSelectCategoryAndRoute(cat.name, 'Fleet Booking')}
+                                        className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
+                                      >
+                                        Book Now
+                                        <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        disabled
+                                        className="w-full py-2.5 bg-neutral-100 text-neutral-400 text-[10px] font-bold uppercase tracking-widest rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5"
+                                      >
+                                        Temporarily Unavailable
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
