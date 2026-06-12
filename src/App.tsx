@@ -343,8 +343,7 @@ export default function App() {
               }`}
             >
               <Lock className={`w-3.5 h-3.5 ${activeTab === 'admin' ? 'text-neutral-900' : 'text-neutral-400'}`} />
-              <span className="hidden sm:inline">Admin Dashboard</span>
-              <span className="inline sm:hidden">Admin</span>
+              <span>Admin</span>
             </button>
           </div>
         </div>

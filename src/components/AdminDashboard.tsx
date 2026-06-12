@@ -448,7 +448,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           >
             <div className="flex items-center gap-1.5 text-xs font-semibold">
               <Volume2 className="w-4 h-4" />
-              <span>Chime {soundEnabled ? 'On' : 'Off'}</span>
+              <span>{soundEnabled ? 'Unmuted' : 'Muted'}</span>
             </div>
           </button>
 
@@ -460,7 +460,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           >
             <span className="flex items-center gap-1.5">
               <BellRing className="w-3.5 h-3.5 text-blue-500" />
-              Request PWA Notifications
+              Enable notification
             </span>
           </button>
 
@@ -474,7 +474,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
             }`}
           >
             <Database className="w-3.5 h-3.5" />
-            {SupabaseService.isUsingFallback() ? 'Database: Env Keys Missing (Fallback Memory Active)' : 'Database: Connected via Secure Env'}
+            {SupabaseService.isUsingFallback() ? 'Database: Env Keys Missing (Fallback Memory Active)' : 'Database: Connected'}
           </div>
 
           <button
@@ -562,15 +562,15 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           </div>
         </div>
 
-        {/* Closed stats Card */}
+        {/* Completed stats Card */}
         <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-5 shadow-sm text-left col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-neutral-450 tracking-wider">Closed archives</span>
-            <span className="p-1 text-[9px] text-neutral-400 font-sans">Archived</span>
+            <span className="text-[10px] uppercase font-bold text-neutral-450 tracking-wider">Completed</span>
+            <span className="p-1 text-[9px] text-neutral-400 font-sans">Completed</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span id="metric-closed-active" className="text-3xl font-extrabold text-neutral-450 font-sans">{stats.closed}</span>
-            <span className="text-[10px] text-neutral-450">Closed Out</span>
+            <span className="text-[10px] text-neutral-450">Completed</span>
           </div>
         </div>
       </div>
@@ -621,7 +621,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                         : 'bg-neutral-100 hover:bg-neutral-150 text-neutral-600'
                     }`}
                   >
-                    {stat}
+                    {stat === 'Closed' ? 'Completed' : stat}
                   </button>
                 ))}
               </div>
@@ -978,7 +978,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                   : 'bg-neutral-400'
                               }`}
                             />
-                            {inq.status}
+                            {inq.status === 'Closed' ? 'Completed' : inq.status}
                           </span>
                           <ChevronDown
                             className={`w-5 h-5 text-neutral-400 transition-transform duration-300 shrink-0 ${
@@ -1163,7 +1163,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                                 <option value="New">🟢 New Alert</option>
                                 <option value="Contacted">🟡 Contacted Customer</option>
                                 <option value="Confirmed">🔵 Confirmed Booking</option>
-                                <option value="Closed">⚪ Closed Archive</option>
+                                <option value="Closed">⚪ Completed</option>
                               </select>
                             </div>
 
