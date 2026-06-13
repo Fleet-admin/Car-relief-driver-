@@ -677,18 +677,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
               </div>
             </div>
 
-            {/* Subscriptions alert status widget */}
-            <div className="pt-2">
-              <div className="p-3 bg-neutral-50 rounded-xl flex items-center justify-between border border-neutral-120">
-                <span className="text-[10px] text-neutral-500 font-sans flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  Realtime Pub/Sub Channel
-                </span>
-                <span className="text-[9px] font-mono font-bold text-emerald-600 bg-emerald-100/50 px-1.5 py-0.5 rounded uppercase">
-                  Connected
-                </span>
-              </div>
-            </div>
+
           </div>
 
           {/* Admin Rate Mapping & Estimation Formula Configuration Panel */}
