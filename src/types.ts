@@ -40,6 +40,9 @@ export interface VehicleCategory {
   per_km_rate: number;
   minimum_fare: number;
   active: boolean;
+  status?: 'Available' | 'Under Maintenance' | 'Archived';
+  image_url?: string;
+  description?: string;
   created_at?: string;
   updated_at?: string;
   passenger_capacity?: number;

@@ -29,7 +29,9 @@ import {
   RefreshCw,
   Coins,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  Upload,
+  Image
 } from 'lucide-react';
 import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
@@ -105,6 +107,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const [saveSuccessMsg, setSaveSuccessMsg] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [isFareMappingExpanded, setIsFareMappingExpanded] = useState(false);
+  const [adminCatFilter, setAdminCatFilter] = useState<'All' | 'Active' | 'Inactive' | 'Archived'>('All');
 
   const saveFareSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,18 +216,14 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       minimum_fare,
       passenger_capacity,
       luggage_capacity,
-      active: true
+      active: true,
+      status: 'Available',
+      image_url: '',
+      description: ''
     };
 
     setVehicleCategories(prev => [...prev, newCat]);
     onNotifyTriggered(`New vehicle category "${newCat.name}" added locally! Click Apply to save.`);
-  };
-
-  const handleDeleteCategory = (catIdOrName: string) => {
-    if (window.confirm("Are you sure you want to remove this vehicle category? This cannot be undone.")) {
-      setVehicleCategories(prev => prev.filter(c => c.id !== catIdOrName && c.name !== catIdOrName));
-      onNotifyTriggered("Vehicle category deleted! Click Apply to save Changes.");
-    }
   };
 
   // Load passcode state or keep lock simple
@@ -733,156 +732,284 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                       + Add Category
                     </button>
                   </div>
+                               {/* Admin Category Filter Pills */}
+                  <div className="flex flex-wrap gap-1.5 pb-2 border-b border-neutral-150">
+                    {(['All', 'Active', 'Inactive', 'Archived'] as const).map((filterOpt) => {
+                      const count = vehicleCategories.filter(c => {
+                        const s = c.status || (c.active ? 'Available' : 'Under Maintenance');
+                        const mappedFilter = s === 'Available' ? 'Active' : s === 'Under Maintenance' ? 'Inactive' : 'Archived';
+                        return filterOpt === 'All' || mappedFilter === filterOpt;
+                      }).length;
+                      return (
+                        <button
+                          key={filterOpt}
+                          type="button"
+                          onClick={() => setAdminCatFilter(filterOpt)}
+                          className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition flex items-center gap-1.5 ${
+                            adminCatFilter === filterOpt
+                              ? 'bg-neutral-900 border-neutral-950 text-white shadow-sm'
+                              : 'bg-white border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+                          }`}
+                        >
+                          <span>{filterOpt}</span>
+                          <span className={`px-1 py-0.2 text-[8px] rounded-full ${
+                            adminCatFilter === filterOpt
+                              ? 'bg-white/20 text-white'
+                              : 'bg-neutral-100 text-neutral-500'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
                   <form onSubmit={saveFareSettings} className="space-y-4">
                     <div className="space-y-3.5">
-                      {vehicleCategories.map((cat, idx) => {
-                        return (
-                          <div key={cat.id || cat.name} className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl space-y-3">
-                            <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-neutral-150">
-                              <div className="flex-1">
-                                <input
-                                  type="text"
-                                  value={cat.name}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, name: val } : c));
-                                  }}
-                                  className="text-xs font-bold text-neutral-800 bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-neutral-950 focus:outline-none py-0.5 px-0.5 max-w-[180px]"
-                                  title="Click to rename category name"
-                                  required
-                                />
-                              </div>
-                              <div className="flex items-center gap-3">
-                                {/* Toggle Active/Inactive */}
-                                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      {vehicleCategories
+                        .filter(cat => {
+                          const s = cat.status || (cat.active ? 'Available' : 'Under Maintenance');
+                          const mappedFilter = s === 'Available' ? 'Active' : s === 'Under Maintenance' ? 'Inactive' : 'Archived';
+                          if (adminCatFilter === 'All') return true;
+                          return mappedFilter === adminCatFilter;
+                        })
+                        .map((cat) => {
+                          const statusVal = cat.status || (cat.active ? 'Available' : 'Under Maintenance');
+                          const catId = cat.id || cat.name;
+
+                          return (
+                            <div key={catId} className="p-4 bg-white border border-neutral-200 rounded-2xl space-y-3 shadow-xs">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-neutral-100">
+                                <div className="flex-1">
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5">
+                                    Category Name
+                                  </label>
                                   <input
-                                    type="checkbox"
-                                    checked={cat.active}
+                                    type="text"
+                                    value={cat.name}
                                     onChange={(e) => {
-                                      const checked = e.target.checked;
-                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, active: checked } : c));
+                                      const val = e.target.value;
+                                      setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, name: val } : c));
                                     }}
-                                    className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-950 w-3.5 h-3.5"
+                                    className="text-xs font-bold text-neutral-800 bg-neutral-50 hover:bg-neutral-100 focus:bg-white border border-neutral-200 focus:border-neutral-950 rounded-lg py-1 px-2.5 w-full max-w-sm font-sans"
+                                    required
                                   />
-                                  <span className={`text-[10px] font-bold uppercase font-sans ${cat.active ? 'text-emerald-700' : 'text-amber-600 font-semibold'}`}>
-                                    {cat.active ? 'Available' : 'Under Maintenance'}
-                                  </span>
-                                </label>
-                                {/* Delete action button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCategory(cat.id || cat.name)}
-                                  className="text-neutral-400 hover:text-red-600 transition p-0.5"
-                                  title="Delete Vehicle Category"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                </div>
+                                <div className="min-w-[150px]">
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-0.5 font-sans">
+                                    Status
+                                  </label>
+                                  <select
+                                    value={statusVal === 'Available' ? 'Active' : statusVal === 'Under Maintenance' ? 'Inactive' : 'Archived'}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const dbVal = val === 'Active' ? 'Available' : val === 'Inactive' ? 'Under Maintenance' : 'Archived';
+                                      setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status: dbVal, active: dbVal === 'Available' } : c));
+                                    }}
+                                    className={`text-xs font-bold uppercase rounded-lg border py-1 px-2.5 w-full focus:outline-none transition ${
+                                      statusVal === 'Available'
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                        : statusVal === 'Under Maintenance'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                        : 'bg-neutral-100 border-neutral-250 text-neutral-600'
+                                    }`}
+                                  >
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Archived">Archived</option>
+                                  </select>
+                                </div>
                               </div>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                              <div>
-                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Base Fee (₹)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                    Base Fee (₹)
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold font-sans">₹</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      required
+                                      value={cat.base_fare}
+                                      onChange={(e) => {
+                                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                        setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, base_fare: val } : c));
+                                      }}
+                                      className="w-full pl-4 pr-1.5 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                    Rate / KM (₹)
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold font-sans">₹</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={0.5}
+                                      required
+                                      value={cat.per_km_rate}
+                                      onChange={(e) => {
+                                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                        setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, per_km_rate: val } : c));
+                                      }}
+                                      className="w-full pl-4 pr-1.5 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                    Min Fare (₹)
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold font-sans">₹</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={1}
+                                      required
+                                      value={cat.minimum_fare || 0}
+                                      onChange={(e) => {
+                                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                        setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, minimum_fare: val } : c));
+                                      }}
+                                      className="w-full pl-4 pr-1.5 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                    Passengers
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    required
+                                    value={cat.passenger_capacity ?? 4}
+                                    onChange={(e) => {
+                                      const val = Math.max(1, parseInt(e.target.value, 10) || 4);
+                                      setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, passenger_capacity: val } : c));
+                                    }}
+                                    className="w-full px-2 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
+                                    Luggage
+                                  </label>
                                   <input
                                     type="number"
                                     min={0}
                                     step={1}
                                     required
-                                    value={cat.base_fare}
+                                    value={cat.luggage_capacity ?? 2}
                                     onChange={(e) => {
-                                      const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, base_fare: val } : c));
+                                      const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                      setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, luggage_capacity: val } : c));
                                     }}
-                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    className="w-full px-2 py-1 bg-white border border-neutral-300 rounded-lg text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
                                   />
                                 </div>
                               </div>
 
-                              <div>
-                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Rate / KM (₹)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1.5">
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans flex items-center justify-between">
+                                    <span>Category Image</span>
+                                    <span className="text-neutral-300 font-normal lowercase">(URL or direct upload)</span>
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    {cat.image_url ? (
+                                      <div className="relative w-9 h-9 rounded-lg border border-neutral-200 overflow-hidden shrink-0 bg-neutral-50 group/thumb">
+                                        <img 
+                                          src={cat.image_url} 
+                                          alt="Preview" 
+                                          className="w-full h-full object-cover" 
+                                          referrerPolicy="no-referrer"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, image_url: '' } : c));
+                                          }}
+                                          className="absolute inset-0 bg-neutral-900/60 flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition duration-150"
+                                          title="Remove Image"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-white" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="w-9 h-9 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 flex items-center justify-center text-neutral-400 shrink-0">
+                                        <Image className="w-4 h-4" />
+                                      </div>
+                                    )}
+                                    <div className="flex-1 min-w-0 flex gap-1.5 items-center">
+                                      <input
+                                        type="text"
+                                        value={cat.image_url || ''}
+                                        placeholder="Paste image URL..."
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, image_url: val } : c));
+                                        }}
+                                        className="flex-1 min-w-0 px-2.5 py-1 text-xs border border-neutral-350 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-950 text-neutral-700 bg-white"
+                                      />
+                                      <label className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 border border-neutral-355 rounded-lg text-neutral-700 text-[10px] font-extrabold font-sans cursor-pointer transition shrink-0 flex items-center justify-center gap-1.5 h-[28px] uppercase select-none">
+                                        <Upload className="w-3 h-3" />
+                                        <span>File</span>
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              const reader = new FileReader();
+                                              reader.onload = (event) => {
+                                                const base64 = event.target?.result as string;
+                                                setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, image_url: base64 } : c));
+                                              };
+                                              reader.readAsDataURL(file);
+                                            }
+                                          }}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans flex items-center justify-between">
+                                    <span>Custom Description</span>
+                                    <span className="text-neutral-300 font-normal lowercase">(optional overview)</span>
+                                  </label>
                                   <input
-                                    type="number"
-                                    min={0}
-                                    step={0.5}
-                                    required
-                                    value={cat.per_km_rate}
+                                    type="text"
+                                    value={cat.description || ''}
+                                    placeholder="Enter premium description to display on website..."
                                     onChange={(e) => {
-                                      const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, per_km_rate: val } : c));
+                                      const val = e.target.value;
+                                      setVehicleCategories(prev => prev.map(c => c.id === cat.id ? { ...c, description: val } : c));
                                     }}
-                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
+                                    className="w-full px-2.5 py-1 text-xs border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-950 text-neutral-700 bg-white"
                                   />
                                 </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Min Fare (₹)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-1.5 top-1 text-xs text-neutral-400 font-mono font-bold">₹</span>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    step={1}
-                                    required
-                                    value={cat.minimum_fare || 0}
-                                    onChange={(e) => {
-                                      const val = Math.max(0, parseFloat(e.target.value) || 0);
-                                      setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, minimum_fare: val } : c));
-                                    }}
-                                    className="w-full pl-4 pr-1 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
-                                  />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Passengers
-                                </label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  step={1}
-                                  required
-                                  value={cat.passenger_capacity ?? 4}
-                                  onChange={(e) => {
-                                    const val = Math.max(1, parseInt(e.target.value, 10) || 4);
-                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, passenger_capacity: val } : c));
-                                  }}
-                                  className="w-full px-1.5 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[8px] font-bold text-neutral-400 uppercase tracking-wider mb-1 font-sans">
-                                  Luggage
-                                </label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  required
-                                  value={cat.luggage_capacity ?? 2}
-                                  onChange={(e) => {
-                                    const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                                    setVehicleCategories(prev => prev.map((c, i) => i === idx ? { ...c, luggage_capacity: val } : c));
-                                  }}
-                                  className="w-full px-1.5 py-0.5 bg-white border border-neutral-300 rounded text-xs font-mono font-bold text-neutral-800 focus:outline-none focus:ring-1 focus:ring-neutral-950"
-                                />
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
 
                     {saveSuccessMsg && (

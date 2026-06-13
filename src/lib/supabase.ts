@@ -453,7 +453,30 @@ export const SupabaseService = {
 
         if (data) {
           console.log('[Supabase Service Debug] Data received from Supabase', data);
-          return data as VehicleCategory[];
+          return (data as any[]).map((row: any) => {
+            let name = row.name || '';
+            let status: 'Available' | 'Under Maintenance' | 'Archived' = row.status || (row.active ? 'Available' : 'Under Maintenance');
+            let image_url = row.image_url || '';
+            let description = row.description || '';
+
+            // Decouple fallback serialization if name uses the delimiter
+            if (name.includes('|||')) {
+              const parts = name.split('|||');
+              name = parts[0];
+              status = (parts[1] as any) || status;
+              image_url = parts[2] || image_url;
+              description = parts[3] || description;
+            }
+
+            return {
+              ...row,
+              name,
+              status,
+              image_url,
+              description,
+              active: status === 'Available'
+            } as VehicleCategory;
+          });
         }
       } catch (err: any) {
         console.error('[Supabase Service Warn] Exception querying vehicle_categories table:', err);
@@ -465,13 +488,13 @@ export const SupabaseService = {
 
     // fallback when Supabase connection is offline/local mock context
     const defaultConfigs: VehicleCategory[] = [
-      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true, passenger_capacity: 4, luggage_capacity: 2 },
-      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true, passenger_capacity: 4, luggage_capacity: 3 },
-      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true, passenger_capacity: 4, luggage_capacity: 3 },
-      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true, passenger_capacity: 6, luggage_capacity: 5 },
-      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true, passenger_capacity: 6, luggage_capacity: 5 },
-      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true, passenger_capacity: 7, luggage_capacity: 6 },
-      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true, passenger_capacity: 16, luggage_capacity: 12 },
+      { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true, status: 'Available', passenger_capacity: 4, luggage_capacity: 2 },
+      { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true, status: 'Available', passenger_capacity: 4, luggage_capacity: 3 },
+      { id: 'premium-sedan', name: 'Premium Sedan', base_fare: 250.00, per_km_rate: 15.00, minimum_fare: 250.00, active: true, status: 'Available', passenger_capacity: 4, luggage_capacity: 3 },
+      { id: 'suv', name: 'SUV', base_fare: 200.00, per_km_rate: 15.00, minimum_fare: 200.00, active: true, status: 'Available', passenger_capacity: 6, luggage_capacity: 5 },
+      { id: 'premium-suv', name: 'Premium SUV', base_fare: 350.00, per_km_rate: 20.00, minimum_fare: 350.00, active: true, status: 'Available', passenger_capacity: 6, luggage_capacity: 5 },
+      { id: 'innova-mpv', name: 'Innova / MPV Tier', base_fare: 250.00, per_km_rate: 16.00, minimum_fare: 250.00, active: true, status: 'Available', passenger_capacity: 7, luggage_capacity: 6 },
+      { id: 'tempo-traveller', name: 'Tempo Traveller Cruiser', base_fare: 500.00, per_km_rate: 25.00, minimum_fare: 500.00, active: true, status: 'Available', passenger_capacity: 16, luggage_capacity: 12 },
     ];
     return defaultConfigs;
   },
@@ -480,34 +503,62 @@ export const SupabaseService = {
     if (supabaseClient) {
       try {
         console.log('[Supabase Service Debug] Saving vehicle categories to public.vehicle_categories table...');
-        console.log('[Supabase Service Debug] Raw categories input:', categories);
         
-        const payload = categories.map(cat => ({
+        // Attempt 1: Try to save with full modern columns (status, image_url, description)
+        const payloadWithFields = categories.map(cat => ({
           id: cat.id || crypto.randomUUID(),
           name: cat.name,
-          base_fare: cat.base_fare,
-          per_km_rate: cat.per_km_rate,
-          minimum_fare: cat.minimum_fare,
+          base_fare: Number(cat.base_fare),
+          per_km_rate: Number(cat.per_km_rate),
+          minimum_fare: Number(cat.minimum_fare),
           passenger_capacity: cat.passenger_capacity ?? 4,
           luggage_capacity: cat.luggage_capacity ?? 2,
-          active: cat.active,
+          active: cat.status ? cat.status === 'Available' : cat.active,
+          status: cat.status || (cat.active ? 'Available' : 'Under Maintenance'),
+          image_url: cat.image_url || '',
+          description: cat.description || '',
           updated_at: new Date().toISOString()
         }));
 
-        console.log('[Supabase Service Debug] Formatted payload for upsert operation:', payload);
-
-        // Core Fix: Use 'id' (the primary key with unique constraint) instead of 'name' as conflict target.
-        // If 'name' doesn't have a unique constraint or unique index in the table, Postgres throws on ON CONFLICT.
-        const { data, error } = await supabaseClient
+        const { error: fullError } = await supabaseClient
           .from('vehicle_categories')
-          .upsert(payload, { onConflict: 'id' });
+          .upsert(payloadWithFields, { onConflict: 'id' });
 
-        if (error) {
-          console.error('[Supabase Service error] Failed to upsert vehicle categories in database:', error);
-          return { success: false, error: `${error.message || 'Unknown database error'} (Code: ${error.code || 'N/A'})` };
+        if (!fullError) {
+          console.log('[Supabase Service success] Saved vehicle categories successfully with full columns.');
+        } else {
+          console.warn('[Supabase Service warning] Upsert with full columns failed (likely missing columns), trying fallback serialization...', fullError);
+          
+          // Attempt 2: Fallback serialization inside name column to support all schemas resilience
+          const payloadFallback = categories.map(cat => {
+            const statusVal = cat.status || (cat.active ? 'Available' : 'Under Maintenance');
+            const imgVal = cat.image_url || '';
+            const descVal = cat.description || '';
+            const serializedName = `${cat.name}|||${statusVal}|||${imgVal}|||${descVal}`;
+            
+            return {
+              id: cat.id || crypto.randomUUID(),
+              name: serializedName,
+              base_fare: Number(cat.base_fare),
+              per_km_rate: Number(cat.per_km_rate),
+              minimum_fare: Number(cat.minimum_fare),
+              passenger_capacity: cat.passenger_capacity ?? 4,
+              luggage_capacity: cat.luggage_capacity ?? 2,
+              active: statusVal === 'Available',
+              updated_at: new Date().toISOString()
+            };
+          });
+
+          const { error: fallbackError } = await supabaseClient
+            .from('vehicle_categories')
+            .upsert(payloadFallback, { onConflict: 'id' });
+
+          if (fallbackError) {
+            console.error('[Supabase Service error] Dynamic fallback save failed:', fallbackError);
+            return { success: false, error: `${fallbackError.message || 'Unknown database error'} (Code: ${fallbackError.code || 'N/A'})` };
+          }
+          console.log('[Supabase Service success] Saved vehicle categories successfully using fallback serialization.');
         }
-
-        console.log('[Supabase Service success] Saved vehicle categories to database successfully. Data response:', data);
       } catch (err: any) {
         console.error('[Supabase Service fail] saveVehicleCategories exception during database write:', err);
         return { success: false, error: err.message || 'Exception during database write' };

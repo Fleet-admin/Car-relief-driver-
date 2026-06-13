@@ -739,13 +739,20 @@ export default function App() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-6" id="fleet-category-showcase">
                         {vehicleCategories
+                          .filter((cat) => {
+                            const statusVal = cat.status || (cat.active ? 'Available' : 'Under Maintenance');
+                            return statusVal !== 'Archived';
+                          })
                           .map((cat) => {
                             const details = resolveCategoryDetails(cat.name);
+                            const statusVal = cat.status || (cat.active ? 'Available' : 'Under Maintenance');
+                            const isAvailable = statusVal === 'Available';
+                            const displayImage = cat.image_url ? cat.image_url.trim() : null;
+                            const displayDescription = (cat.description && cat.description.trim()) ? cat.description.trim() : details.description;
                             
                             // Dynamically read from Supabase with safe resolved backups
                             const passengerCount = cat.passenger_capacity ?? 4;
                             const luggageCount = cat.luggage_capacity ?? 2;
-                            const isAvailable = cat.active;
                             
                             return (
                               <div
@@ -754,22 +761,30 @@ export default function App() {
                                 className={`bg-white border rounded-3xl overflow-hidden shadow-sm flex flex-col h-full transition-all duration-300 ${
                                   isAvailable 
                                     ? 'border-neutral-200 hover:shadow-xl hover:border-neutral-300 transform hover:-translate-y-1.5 group' 
-                                    : 'border-neutral-200 opacity-60 saturate-[0.65]'
+                                    : 'border-neutral-250 opacity-40 saturate-[0.45] bg-neutral-50/50 shadow-none'
                                 }`}
                               >
                                 {/* Header / Mini Vehicle Image Graphic Area */}
-                                <div className={`h-48 bg-gradient-to-br ${details.gradient} p-6 flex flex-col justify-between text-white relative overflow-hidden shrink-0`}>
+                                <div 
+                                  className={`h-48 p-6 flex flex-col justify-between text-white relative overflow-hidden shrink-0 ${
+                                    displayImage ? 'bg-neutral-900' : `bg-gradient-to-br ${details.gradient}`
+                                  }`}
+                                  style={displayImage ? { backgroundImage: `url(${displayImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                                >
+                                  {/* Absolute dark screen overlay if custom image to preserve typography accessibility */}
+                                  {displayImage && <div className="absolute inset-0 bg-neutral-950/45 backdrop-blur-[0.5px] z-0" />}
+
                                   <div className="relative z-10 flex justify-between items-start">
-                                    <span className="text-[8px] tracking-widest font-extrabold uppercase bg-white/11 px-2 py-0.5 rounded backdrop-blur-sm text-neutral-100">
+                                    <span className="text-[8px] tracking-widest font-extrabold uppercase bg-white/11 px-2 py-0.5 rounded backdrop-blur-sm text-neutral-100 font-sans">
                                       Fleet Tier
                                     </span>
                                     {isAvailable ? (
-                                      <span className="text-[9px] font-bold text-emerald-400 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                      <span className="text-[9px] font-bold text-emerald-400 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-500/20">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                         Available
                                       </span>
                                     ) : (
-                                      <span className="text-[9px] font-bold text-amber-300 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-amber-950/92 px-2.5 py-0.5 rounded border border-amber-600/40">
+                                      <span className="text-[9px] font-extrabold text-amber-300 font-sans tracking-wider uppercase flex items-center gap-1 shrink-0 bg-amber-950/92 px-2.5 py-0.5 rounded border border-amber-600/40">
                                         UNDER MAINTENANCE
                                       </span>
                                     )}
@@ -784,10 +799,12 @@ export default function App() {
                                     </span>
                                   </div>
 
-                                  {/* Absolute minimalist vehicle image graphic */}
-                                  <div className={`absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-[0.09] pointer-events-none transition-transform duration-500 ${isAvailable ? 'group-hover:scale-110' : ''}`}>
-                                    <Car className="w-48 h-48 text-white fill-current" />
-                                  </div>
+                                  {/* Absolute minimalist vehicle background silhouette if no image is given */}
+                                  {!displayImage && (
+                                    <div className={`absolute right-0 bottom-0 translate-y-3 translate-x-3 opacity-[0.09] pointer-events-none transition-transform duration-500 ${isAvailable ? 'group-hover:scale-110' : ''}`}>
+                                      <Car className="w-48 h-48 text-white fill-current" />
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Body Content Area */}
@@ -805,7 +822,7 @@ export default function App() {
 
                                     {/* Description text */}
                                     <p className="text-xs text-neutral-600 leading-relaxed font-sans">
-                                      {details.description}
+                                      {displayDescription}
                                     </p>
 
                                     {/* Optional helper text for under maintenance */}
@@ -818,27 +835,27 @@ export default function App() {
 
                                     {/* SaaS-style Pricing block */}
                                     <div className="p-3.5 bg-neutral-950 text-white rounded-2xl border border-neutral-850 gap-2 text-center font-mono text-[9px] grid grid-cols-3 shadow-md">
-                                      <div className="border-r border-neutral-800 py-0.5">
+                                      <div className="border-r border-neutral-800 py-0.5 font-sans">
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Base Fare
                                         </span>
-                                        <span className="font-extrabold text-sm text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400 font-mono">
                                           ₹{cat.base_fare.toFixed(0)}
                                         </span>
                                       </div>
-                                      <div className="border-r border-neutral-800 py-0.5">
+                                      <div className="border-r border-neutral-800 py-0.5 font-sans">
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Per KM
                                         </span>
-                                        <span className="font-extrabold text-sm text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400 font-mono">
                                           ₹{cat.per_km_rate.toFixed(0)}
                                         </span>
                                       </div>
-                                      <div className="py-0.5">
+                                      <div className="py-0.5 font-sans">
                                         <span className="block text-neutral-400 font-sans tracking-wide uppercase text-[7.5px] font-bold mb-0.5">
                                           Min Fare
                                         </span>
-                                        <span className="font-extrabold text-sm text-emerald-400">
+                                        <span className="font-extrabold text-sm text-emerald-400 font-mono">
                                           ₹{(cat.minimum_fare ?? cat.base_fare).toFixed(0)}
                                         </span>
                                       </div>
@@ -850,7 +867,7 @@ export default function App() {
                                     {isAvailable ? (
                                       <button
                                         onClick={() => handleSelectCategoryAndRoute(cat.name, 'Fleet Booking')}
-                                        className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95"
+                                        className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white text-[11px] font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 group cursor-pointer shadow-sm active:scale-95 border-0"
                                       >
                                         Book Now
                                         <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1.5 transition-transform" />
@@ -858,7 +875,7 @@ export default function App() {
                                     ) : (
                                       <button
                                         disabled
-                                        className="w-full py-2.5 bg-neutral-100 text-neutral-400 text-[10px] font-bold uppercase tracking-widest rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5"
+                                        className="w-full py-2.5 bg-neutral-100 text-neutral-400 text-[10px] font-bold uppercase tracking-widest rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5 border-0"
                                       >
                                         Temporarily Unavailable
                                       </button>
