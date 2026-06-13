@@ -42,6 +42,7 @@ import MapPicker from './components/MapPicker';
 import InquiryForm from './components/InquiryForm';
 import AdminDashboard from './components/AdminDashboard';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
+import { InstallPrompt } from './components/InstallPrompt';
 import { SupabaseService } from './lib/supabase';
 
 interface LocationData {
@@ -379,12 +380,15 @@ export default function App() {
     { key: 'home', label: 'Home', icon: Home },
     { key: 'fleet', label: 'Fleet Categories', icon: Car },
     { key: 'drivers', label: 'Driver Relief Services', icon: ShieldCheck },
-    { key: 'about', label: 'About Us', icon: Info },
+    { key: 'about', label: 'About', icon: Info },
     { key: 'contact', label: 'Contact', icon: Mail },
   ];
 
   return (
     <div className="min-h-screen bg-neutral-50 font-sans flex flex-col justify-between selection:bg-neutral-900 selection:text-amber-450">
+      {/* Dynamic PWA Interactive Install Promotion & Fallback Banner */}
+      <InstallPrompt onNotifyTriggered={triggerGlobalToast} />
+
       {/* Upper Navigation Header */}
       <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-3">

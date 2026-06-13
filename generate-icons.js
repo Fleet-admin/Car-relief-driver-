@@ -4,10 +4,14 @@ import path from 'path';
 
 const sourceImage = './src/assets/images/app_logo_1781251409675.jpg';
 const publicDir = './public';
+const iconsDir = path.join(publicDir, 'icons');
 
-// Ensure public directory exists
+// Ensure directories exist
 if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir, { recursive: true });
+}
+if (!fs.existsSync(iconsDir)) {
+  fs.mkdirSync(iconsDir, { recursive: true });
 }
 
 const sizes = [
@@ -29,19 +33,54 @@ async function generatePngs() {
   console.log(`Generating icons from: ${sourceImage}...`);
   for (const size of sizes) {
     const destPath = path.join(publicDir, size.name);
+    const backupDestPath = path.join(iconsDir, size.name);
+
+    // Standard PNG resize
     await sharp(sourceImage)
       .resize(size.width, size.height)
       .toFormat('png')
       .toFile(destPath);
-    console.log(`Created: ${size.name}`);
+    
+    // Copy/write to public/icons/ as well
+    fs.copyFileSync(destPath, backupDestPath);
+    console.log(`Created PWA Icon: ${size.name}`);
   }
 
-  // Also build favicon.ico by copying/converting the 32x32 or 48x48 one
+  // Generate Maskable Icons (192x192 and 512x512)
+  const maskableSizes = [192, 512];
+  for (const size of maskableSizes) {
+    const name = `icon-${size}x${size}-maskable.png`;
+    const destPath = path.join(publicDir, name);
+    const backupDestPath = path.join(iconsDir, name);
+
+    // Shrink original by 25% (giving beautiful padding in the safe area) and overlay on a dark #111827 core
+    const innerSize = Math.round(size * 0.70);
+    const borderSize = Math.round((size - innerSize) / 2);
+
+    await sharp(sourceImage)
+      .resize(innerSize, innerSize, { fit: 'contain', background: '#111827' })
+      .extend({
+        top: borderSize,
+        bottom: size - innerSize - borderSize,
+        left: borderSize,
+        right: size - innerSize - borderSize,
+        background: '#111827'
+      })
+      .toFormat('png')
+      .toFile(destPath);
+
+    fs.copyFileSync(destPath, backupDestPath);
+    console.log(`Created Maskable PWA Icon: ${name}`);
+  }
+
+  // Also build favicon.ico by copying/converting the 32x32 one
   const faviconIco = path.join(publicDir, 'favicon.ico');
+  const backupFaviconIco = path.join(iconsDir, 'favicon.ico');
   await sharp(sourceImage)
     .resize(32, 32)
     .toFormat('png')
     .toFile(faviconIco);
+  fs.copyFileSync(faviconIco, backupFaviconIco);
   console.log('Created: favicon.ico');
 }
 

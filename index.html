@@ -97,19 +97,17 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Clean up and ensure service workers are unregistered to prevent static caching issues -->
+    <!-- Register Progressive Web App (PWA) Service Worker for full off-line resiliency -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister().then((success) => {
-              if (success) {
-                console.log('Successfully unregistered active service worker to prevent caching issues.');
-              }
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('PWA ServiceWorker successfully registered with scope: ', registration.scope);
+            })
+            .catch(function(err) {
+              console.error('PWA ServiceWorker registration failed: ', err);
             });
-          }
-        }).catch((err) => {
-          console.error('Error unregistering service worker:', err);
         });
       }
     </script>
