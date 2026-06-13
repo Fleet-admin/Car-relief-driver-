@@ -1244,12 +1244,14 @@ export default function App() {
 
 
 
-      {/* Embedded support operator drawer bubble */}
-      <FloatingWhatsApp
-        phoneNumber={contactPhone}
-        whatsappNumber={contactPhone}
-        email={contactEmail}
-      />
+      {/* Embedded support operator drawer bubble - only visible in frontend client screens */}
+      {activeTab === 'client' && (
+        <FloatingWhatsApp
+          phoneNumber={contactPhone}
+          whatsappNumber={contactPhone}
+          email={contactEmail}
+        />
+      )}
     </div>
   );
 }
