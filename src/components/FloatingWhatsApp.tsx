@@ -23,10 +23,10 @@ export default function FloatingWhatsApp({
   const formattedWhatsapp = whatsappNumber.replace(/[^0-9]/g, '');
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]" id="floating-support-container">
+    <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[9999]" id="floating-support-container">
       {/* Expanded Support Dialog Card */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-[calc(100vw-3rem)] sm:w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl p-5 mb-2 overflow-hidden animate-in fade-in slide-in-from-bottom-[10px] duration-200">
+        <div className="absolute bottom-14 md:bottom-16 right-0 w-[calc(100vw-2rem)] sm:w-80 bg-white border border-neutral-200 rounded-2xl shadow-2xl p-5 mb-2 overflow-hidden animate-in fade-in slide-in-from-bottom-[10px] duration-200">
           <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-50 rounded-full -z-10" />
 
           {/* Header */}
@@ -98,17 +98,17 @@ export default function FloatingWhatsApp({
       <button
         onClick={() => setIsOpen(!isOpen)}
         id="btn-toggle-floating-support"
-        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition duration-300 transform hover:scale-105 active:scale-95 ${
+        className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-xl md:shadow-2xl transition duration-300 transform hover:scale-105 active:scale-95 ${
           isOpen ? 'bg-neutral-900 border border-neutral-850' : 'bg-emerald-500 hover:bg-emerald-600'
         }`}
         title="Contact Carriage & Driver Dispatch"
       >
         {isOpen ? (
-          <X className="w-6 h-6 text-white animate-spin-once" />
+          <X className="w-5 h-5 md:w-6 md:h-6 text-white animate-spin-once" />
         ) : (
           <div className="relative">
-            <MessageCircle className="w-7 h-7 text-white fill-white" />
-            <span className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
+            <MessageCircle className="w-6 h-6 md:w-7 md:h-7 text-white fill-white" />
+            <span className="absolute -top-1 -right-1 md:-top-1.5 md:-right-1.5 w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
           </div>
         )}
       </button>

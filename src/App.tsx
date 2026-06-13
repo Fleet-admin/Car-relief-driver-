@@ -389,44 +389,120 @@ export default function App() {
       {/* Dynamic PWA Interactive Install Promotion & Fallback Banner */}
       <InstallPrompt onNotifyTriggered={triggerGlobalToast} />
 
-      {/* Upper Navigation Header */}
-      <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm transition-all duration-350">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-1 sm:gap-3">
-          
-          {/* Top Row: Logo + Branding and Mobile Admin Button */}
-          <div className="flex items-center justify-between w-full md:w-auto">
-            {/* Logo & Branding */}
-            <button
-              onClick={() => {
-                setActiveTabPersisted('client');
-                setActiveNavPersisted('home');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              id="brand-logo-button"
-              className="flex items-center gap-2.5 text-left group animate-fade-in shrink-0"
-            >
-              <div className="p-1 bg-neutral-950 rounded-xl shadow-md group-hover:bg-[#10B981] transition-all overflow-hidden w-10 h-10 flex items-center justify-center">
-                <img src="/icon.svg" alt="Car & Driver" className="w-8 h-8 object-contain animate-pulse-slow" />
-              </div>
-              <div>
-                <h1 className="text-xs sm:text-sm font-extrabold tracking-tight text-neutral-950 uppercase leading-none font-display">
-                  Car & Driver
-                </h1>
-                <span className="text-[9px] sm:text-[10px] text-neutral-400 font-mono tracking-widest block mt-0.5 font-bold uppercase">
-                  Relief Services
-                </span>
-              </div>
-            </button>
+      {/* Upper Navigation Header (Completely hidden/unmounted when activeTab is set to 'admin' or on mobile layout) */}
+      {activeTab === 'client' && (
+        <header className="hidden md:block md:sticky top-0 bg-white/95 backdrop-blur-md border-b border-neutral-200 z-[9990] shadow-sm transition-all duration-350">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1.5 md:py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-0 md:gap-3">
+            
+            {/* Top Row: Logo + Branding and Mobile Admin Button */}
+            <div className="flex items-center justify-between w-full md:w-auto">
+              {/* Logo & Branding */}
+              <button
+                onClick={() => {
+                  setActiveTabPersisted('client');
+                  setActiveNavPersisted('home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                id="brand-logo-button"
+                className="flex items-center gap-2 text-left group animate-fade-in shrink-0"
+              >
+                <div className="p-0.5 md:p-1 bg-neutral-950 rounded-lg md:rounded-xl shadow-md group-hover:bg-[#10B981] transition-all overflow-hidden w-8 h-8 md:w-10 md:h-10 flex items-center justify-center">
+                  <img src="/icon.svg" alt="Car & Driver" className="w-6 h-6 md:w-8 md:h-8 object-contain animate-pulse-slow" />
+                </div>
+                <div>
+                  <h1 className="text-[11px] md:text-sm font-extrabold tracking-tight text-neutral-950 uppercase leading-none font-display">
+                    Car & Driver
+                  </h1>
+                  <span className="text-[8px] md:text-[10px] text-neutral-400 font-mono tracking-widest block mt-0.5 font-bold uppercase leading-none">
+                    Relief Services
+                  </span>
+                </div>
+              </button>
 
-            {/* Mobile Admin button (only visible on mobile, aligned right) */}
-            <div className="flex md:hidden items-center">
+              {/* Mobile Admin button (only visible on mobile, aligned right) */}
+              <div className="flex md:hidden items-center">
+                <button
+                  onClick={() => setActiveTabPersisted('admin')}
+                  id="header-nav-admin"
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold tracking-wide transition-all shrink-0 ${
+                    activeTab === 'admin'
+                      ? 'bg-amber-500 text-neutral-950 shadow-md border border-amber-400/50'
+                      : 'bg-neutral-50 text-neutral-600 hover:text-neutral-915 hover:bg-neutral-100 border border-neutral-200'
+                  }`}
+                >
+                  <Lock className="w-2.5 h-2.5 text-neutral-400" />
+                  <span>Admin</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Central/Main Navbar for standard navigation links (Desktop only) */}
+            <nav className="hidden md:flex items-center gap-1 mx-auto" id="main-header-navbar">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === 'client' && activeNav === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    id={`header-nav-item-${item.key}`}
+                    onClick={() => {
+                      setActiveTabPersisted('client');
+                      setActiveNavPersisted(item.key);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                      isActive
+                        ? 'bg-neutral-900 text-white shadow-md font-bold'
+                        : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100 font-medium'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Mobile Navigation bar directly embedded under logo row within layout (No separate floating component!) */}
+            <nav 
+              className="flex md:hidden items-center gap-1 overflow-x-auto whitespace-nowrap no-scrollbar py-0.5 -mx-1 px-1 border-t border-neutral-100/35 mt-1"
+              style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
+              id="mobile-header-navbar"
+            >
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === 'client' && activeNav === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    id={`header-nav-item-mobile-${item.key}`}
+                    onClick={() => {
+                      setActiveTabPersisted('client');
+                      setActiveNavPersisted(item.key);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all shrink-0 ${
+                      isActive
+                        ? 'bg-neutral-900 text-white shadow-sm font-bold'
+                        : 'text-neutral-500 hover:text-neutral-950 font-medium'
+                    }`}
+                  >
+                    <Icon className={`w-3 h-3 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Admin Navigation Button (Desktop only) */}
+            <div className="hidden md:flex items-center gap-2 justify-end">
               <button
                 onClick={() => setActiveTabPersisted('admin')}
                 id="header-nav-admin"
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all shrink-0 ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all shrink-0 ${
                   activeTab === 'admin'
                     ? 'bg-amber-500 text-neutral-950 shadow-md border border-amber-400/50'
-                    : 'bg-neutral-50 text-neutral-600 hover:text-neutral-915 hover:bg-neutral-100 border border-neutral-200'
+                    : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200'
                 }`}
               >
                 <Lock className={`w-3.5 h-3.5 ${activeTab === 'admin' ? 'text-neutral-900' : 'text-neutral-400'}`} />
@@ -434,82 +510,8 @@ export default function App() {
               </button>
             </div>
           </div>
-
-          {/* Central/Main Navbar for standard navigation links (Desktop only) */}
-          <nav className="hidden md:flex items-center gap-1 mx-auto" id="main-header-navbar">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === 'client' && activeNav === item.key;
-              return (
-                <button
-                  key={item.key}
-                  id={`header-nav-item-${item.key}`}
-                  onClick={() => {
-                    setActiveTabPersisted('client');
-                    setActiveNavPersisted(item.key);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                    isActive
-                      ? 'bg-neutral-900 text-white shadow-md font-bold'
-                      : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100 font-medium'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Mobile Navigation bar directly embedded under logo row within layout (No separate floating component!) */}
-          <nav 
-            className="flex md:hidden items-center gap-1 overflow-x-auto whitespace-nowrap no-scrollbar py-1.5 -mx-1 px-1 border-t border-neutral-100/50 mt-2"
-            style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
-            id="mobile-header-navbar"
-          >
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === 'client' && activeNav === item.key;
-              return (
-                <button
-                  key={item.key}
-                  id={`header-nav-item-mobile-${item.key}`}
-                  onClick={() => {
-                    setActiveTabPersisted('client');
-                    setActiveNavPersisted(item.key);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all shrink-0 ${
-                    isActive
-                      ? 'bg-neutral-900 text-white shadow-sm font-bold'
-                      : 'text-neutral-500 hover:text-neutral-950 hover:bg-neutral-100 font-medium'
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-400' : 'text-neutral-400'}`} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Admin Navigation Button (Desktop only) */}
-          <div className="hidden md:flex items-center gap-2 justify-end">
-            <button
-              onClick={() => setActiveTabPersisted('admin')}
-              id="header-nav-admin"
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all shrink-0 ${
-                activeTab === 'admin'
-                  ? 'bg-amber-500 text-neutral-950 shadow-md border border-amber-400/50'
-                  : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 border border-neutral-200'
-              }`}
-            >
-              <Lock className={`w-3.5 h-3.5 ${activeTab === 'admin' ? 'text-neutral-900' : 'text-neutral-400'}`} />
-              <span>Admin</span>
-            </button>
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Global Interactive Notification Toaster Portal */}
       <AnimatePresence>
@@ -539,7 +541,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 md:pb-8">
         <AnimatePresence mode="wait">
           {activeTab === 'client' ? (
             <motion.div
@@ -1264,6 +1266,153 @@ export default function App() {
           whatsappNumber={contactPhone}
           email={contactEmail}
         />
+      )}
+
+      {/* Mobile-Only Fixed Bottom Navigation Bar */}
+      {activeTab === 'client' && (
+        <nav 
+          className="fixed bottom-0 left-0 right-0 md:hidden bg-white/95 backdrop-blur-md border-t border-neutral-200 shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-t-2xl z-[9990] pb-6 pt-1.5 px-1"
+          id="mobile-bottom-navigation-bar"
+        >
+          <div className="flex items-center justify-around max-w-md mx-auto">
+            {/* Home Tab */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('client');
+                setActiveNavPersisted('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-home"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'client' && activeNav === 'home'
+                  ? 'text-neutral-950 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'client' && activeNav === 'home' ? 'bg-neutral-100 text-[#10B981]' : ''}`}>
+                <Home className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">Home</span>
+              {activeTab === 'client' && activeNav === 'home' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-neutral-950 rounded-full" />
+              )}
+            </button>
+
+            {/* Fleet Categories Tab */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('client');
+                setActiveNavPersisted('fleet');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-fleet"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'client' && activeNav === 'fleet'
+                  ? 'text-neutral-950 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'client' && activeNav === 'fleet' ? 'bg-neutral-100 text-[#10B981]' : ''}`}>
+                <Car className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">Fleet</span>
+              {activeTab === 'client' && activeNav === 'fleet' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-neutral-950 rounded-full" />
+              )}
+            </button>
+
+            {/* Driver Relief Services Tab */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('client');
+                setActiveNavPersisted('drivers');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-drivers"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'client' && activeNav === 'drivers'
+                  ? 'text-neutral-950 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'client' && activeNav === 'drivers' ? 'bg-neutral-100 text-[#10B981]' : ''}`}>
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">Relief</span>
+              {activeTab === 'client' && activeNav === 'drivers' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-neutral-950 rounded-full" />
+              )}
+            </button>
+
+            {/* About Tab */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('client');
+                setActiveNavPersisted('about');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-about"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'client' && activeNav === 'about'
+                  ? 'text-neutral-950 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'client' && activeNav === 'about' ? 'bg-neutral-100 text-[#10B981]' : ''}`}>
+                <Info className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">About</span>
+              {activeTab === 'client' && activeNav === 'about' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-neutral-950 rounded-full" />
+              )}
+            </button>
+
+            {/* Contact Tab */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('client');
+                setActiveNavPersisted('contact');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-contact"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'client' && activeNav === 'contact'
+                  ? 'text-neutral-950 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'client' && activeNav === 'contact' ? 'bg-neutral-100 text-[#10B981]' : ''}`}>
+                <Mail className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">Contact</span>
+              {activeTab === 'client' && activeNav === 'contact' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-neutral-950 rounded-full" />
+              )}
+            </button>
+
+            {/* Admin Tab (Required layout order moves Admin to the very end of list) */}
+            <button
+              onClick={() => {
+                setActiveTabPersisted('admin');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              id="mobile-bottom-nav-admin"
+              className={`flex flex-col items-center justify-center py-1 flex-1 relative transition duration-200 ${
+                activeTab === 'admin'
+                  ? 'text-amber-500 font-bold'
+                  : 'text-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              <div className={`p-1 rounded-full transition-all ${activeTab === 'admin' ? 'bg-neutral-100 text-amber-500' : ''}`}>
+                <Lock className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium tracking-wide mt-0.5">Admin</span>
+              {activeTab === 'admin' && (
+                <span className="absolute -top-1 w-6 h-0.5 bg-amber-500 rounded-full" />
+              )}
+            </button>
+          </div>
+        </nav>
       )}
     </div>
   );
