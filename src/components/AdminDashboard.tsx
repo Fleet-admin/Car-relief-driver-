@@ -109,9 +109,14 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const [isFareMappingExpanded, setIsFareMappingExpanded] = useState(false);
   const [adminCatFilter, setAdminCatFilter] = useState<'All' | 'Active' | 'Inactive' | 'Archived'>('All');
 
+  // Performance loader management states
+  const [isSavingCategories, setIsSavingCategories] = useState(false);
+  const [isResettingCategories, setIsResettingCategories] = useState(false);
+
   const saveFareSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setPricingError(null);
+    setIsSavingCategories(true);
     try {
       console.log('[Admin Panel UI] Submitting vehicle pricing categories edit sync request...');
       const result = await SupabaseService.saveVehicleCategories(vehicleCategories);
@@ -136,12 +141,15 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       const exceptionText = err.message || 'An unexpected exception occurred';
       setPricingError(exceptionText);
       onNotifyTriggered('Failed to save settings: ' + exceptionText);
+    } finally {
+      setIsSavingCategories(false);
     }
   };
 
   const resetFareToDefaults = async () => {
     if (window.confirm('Do you want to reset all vehicle pricing categories back to system standard plans? This will overwrite live database settings.')) {
       setPricingError(null);
+      setIsResettingCategories(true);
       const defaultConfigs: VehicleCategory[] = [
         { id: 'hatchback', name: 'Hatchback', base_fare: 100.00, per_km_rate: 10.00, minimum_fare: 100.00, active: true, passenger_capacity: 4, luggage_capacity: 2 },
         { id: 'sedan', name: 'Sedan', base_fare: 150.00, per_km_rate: 12.00, minimum_fare: 150.00, active: true, passenger_capacity: 4, luggage_capacity: 3 },
@@ -174,6 +182,8 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
         const exceptionText = err.message || 'An unexpected exception occurred';
         setPricingError(exceptionText);
         onNotifyTriggered('Failed to save settings: ' + exceptionText);
+      } finally {
+        setIsResettingCategories(false);
       }
     }
   };
@@ -288,14 +298,28 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
     return metrics;
   };
 
+  const refreshInquiries = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await SupabaseService.queryInquiries();
+      setInquiries(data);
+    } catch (err: any) {
+      console.warn('Silent inquiry refresh failed:', err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     setErrorText(null);
     try {
-      const data = await SupabaseService.queryInquiries();
+      // High-speed parallel connection pooling queries
+      const [data, cats] = await Promise.all([
+        SupabaseService.queryInquiries(),
+        SupabaseService.getVehicleCategories()
+      ]);
       setInquiries(data);
-      
-      const cats = await SupabaseService.getVehicleCategories();
       console.log('Data received from Supabase', cats);
       setVehicleCategories(cats);
       console.log('Data displayed in the Admin Portal', cats);
@@ -327,8 +351,8 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
         onNotifyTriggered(`Inquiry status updated: ${payload.name || 'Inquiry'} is now ${payload.status}`);
       }
 
-      // Refresh list to pull live PostgreSQL attributes
-      loadData();
+      // Efficiently refresh inquiries list silently in the background
+      refreshInquiries(true);
     });
 
     return () => {
@@ -1019,16 +1043,32 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                         type="button"
                         id="btn-admin-fare-reset"
                         onClick={resetFareToDefaults}
-                        className="py-2 text-center text-neutral-500 hover:text-neutral-800 border border-neutral-250 bg-white rounded-xl text-[10px] font-bold uppercase transition hover:bg-neutral-50"
+                        disabled={isSavingCategories || isResettingCategories}
+                        className="py-2 text-center text-neutral-500 hover:text-neutral-800 border border-neutral-250 bg-white rounded-xl text-[10px] font-bold uppercase transition hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                       >
-                        Reset Defaults
+                        {isResettingCategories ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin text-neutral-500" />
+                            <span>Resetting...</span>
+                          </>
+                        ) : (
+                          <span>Reset Defaults</span>
+                        )}
                       </button>
                       <button
                         type="submit"
                         id="btn-admin-fare-save"
-                        className="py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition shadow-sm"
+                        disabled={isSavingCategories || isResettingCategories}
+                        className="py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-wider transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                       >
-                        Apply & Sync
+                        {isSavingCategories ? (
+                          <>
+                            <RefreshCw className="w-3 h-3 animate-spin text-amber-500" />
+                            <span>Syncing...</span>
+                          </>
+                        ) : (
+                          <span>Apply & Sync</span>
+                        )}
                       </button>
                     </div>
                   </form>
