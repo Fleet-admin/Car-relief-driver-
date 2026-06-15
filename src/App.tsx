@@ -159,6 +159,25 @@ function resolveCategoryDetails(name: string) {
 }
 
 export default function App() {
+  // Early check to identify a completely fresh session (fresh app launch) vs page reload/refresh
+  if (typeof window !== 'undefined') {
+    const isFreshSession = !sessionStorage.getItem('app_session_active');
+    if (isFreshSession) {
+      // Clear persistence keys to ensure fresh launches always initialize on the Home page
+      localStorage.removeItem('active_tab');
+      localStorage.removeItem('active_nav');
+      sessionStorage.setItem('app_session_active', 'true');
+      
+      // Remove any route/tab queries from active URL history so default fallbacks are used
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('tab') || url.searchParams.has('nav')) {
+        url.searchParams.delete('tab');
+        url.searchParams.delete('nav');
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }
+
   // Navigation: 'client' or 'admin' (persisted across page refreshes)
   const [activeTab, setActiveTab] = useState<'client' | 'admin'>(() => {
     if (typeof window !== 'undefined') {

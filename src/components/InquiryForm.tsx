@@ -225,6 +225,17 @@ export default function InquiryForm({
     return Math.max(calc, selectedCategoryConfig.minimum_fare || 0);
   }, [selectedCategoryConfig, routeDistance]);
 
+  // Validate pickup and destination locations
+  const pickupClean = pickupAddress.trim();
+  const dropClean = dropAddress.trim();
+
+  const isPickupAndDropValid = useMemo(() => {
+    if (!pickupClean) return false;
+    if (!dropClean) return false;
+    if (pickupClean.toLowerCase() === dropClean.toLowerCase()) return false;
+    return true;
+  }, [pickupClean, dropClean]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
@@ -240,6 +251,18 @@ export default function InquiryForm({
     }
     if (!vehicleCategory) {
       setValidationError('Please select a preferred vehicle category.');
+      return;
+    }
+    if (!pickupClean) {
+      setValidationError('Pickup location is required.');
+      return;
+    }
+    if (!dropClean) {
+      setValidationError('Destination location is required.');
+      return;
+    }
+    if (pickupClean.toLowerCase() === dropClean.toLowerCase()) {
+      setValidationError('Pickup and destination cannot be the same.');
       return;
     }
     if (!travelDate) {
@@ -525,7 +548,7 @@ export default function InquiryForm({
               {/* Map Synced Pickup location preview/edit */}
               <div>
                 <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span>Pickup Location</span>
+                  <span>Pickup Location <span className="text-red-500">*</span></span>
                   {pickupAddress && (
                     <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                       Coordinates Set
@@ -538,14 +561,21 @@ export default function InquiryForm({
                   value={pickupAddress}
                   onChange={(e) => setPickupAddress(e.target.value)}
                   placeholder="Select pickup point by clicking on the interactive map..."
-                  className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans leading-relaxed"
+                  className={`w-full px-3.5 py-2 text-xs bg-neutral-50 border rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans leading-relaxed ${
+                    !pickupAddress.trim() ? 'border-red-350 bg-red-50/10' : 'border-neutral-300'
+                  }`}
                 />
+                {!pickupAddress.trim() && (
+                  <p id="pickup-validation-msg" className="text-red-500 text-[11px] mt-1 font-semibold">
+                    Pickup location is required.
+                  </p>
+                )}
               </div>
 
               {/* Map Synced Drop/Destination location preview/edit */}
               <div>
                 <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1 flex items-center justify-between">
-                  <span>Destination / Drop Location</span>
+                  <span>Destination / Drop Location <span className="text-red-500">*</span></span>
                   {dropAddress && (
                     <span className="text-[10px] text-red-600 font-bold bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
                       Coordinates Set
@@ -557,9 +587,20 @@ export default function InquiryForm({
                   rows={3}
                   value={dropAddress}
                   onChange={(e) => setDropAddress(e.target.value)}
-                  placeholder="Select destination point by clicking on the interactive map or leave blank if unspecified..."
-                  className="w-full px-3.5 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans leading-relaxed"
+                  placeholder="Select destination point by clicking on the interactive map..."
+                  className={`w-full px-3.5 py-2 text-xs bg-neutral-50 border rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-neutral-900 transition font-sans leading-relaxed ${
+                    !dropAddress.trim() || (pickupAddress.trim().toLowerCase() === dropAddress.trim().toLowerCase() && dropAddress.trim()) ? 'border-red-350 bg-red-50/10' : 'border-neutral-300'
+                  }`}
                 />
+                {!dropAddress.trim() ? (
+                  <p id="drop-validation-msg" className="text-red-500 text-[11px] mt-1 font-semibold">
+                    Destination location is required.
+                  </p>
+                ) : pickupAddress.trim().toLowerCase() === dropAddress.trim().toLowerCase() ? (
+                  <p id="same-validation-msg" className="text-red-500 text-[11px] mt-1 font-semibold">
+                    Pickup and destination cannot be the same.
+                  </p>
+                ) : null}
               </div>
 
               {/* DYNAMIC INSTANT ESTIMATE BLOCK */}
@@ -674,8 +715,8 @@ export default function InquiryForm({
               <button
                 type="submit"
                 id="btn-submit-inquiry-form"
-                disabled={isSubmitting}
-                className="w-full py-3 px-4 mt-6 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-sm font-semibold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50"
+                disabled={isSubmitting || !isPickupAndDropValid}
+                className="w-full py-3 px-4 mt-6 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-sm font-semibold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
