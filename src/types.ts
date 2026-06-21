@@ -44,6 +44,8 @@ export interface Inquiry {
   driver_longitude?: number | null;
   driver_message_sent?: boolean | null;
   customer_message_sent?: boolean | null;
+  last_location_update?: string | null;
+  trip_status?: 'confirmed' | 'driver_en_route' | 'trip_in_progress' | 'completed' | null;
 }
 
 export interface VehicleCategory {
@@ -80,6 +82,8 @@ export interface Booking {
   booking_date: string;
   booking_time: string;
   status: 'Pending' | 'Confirmed' | 'Active' | 'Completed';
+  trip_status?: 'confirmed' | 'driver_en_route' | 'trip_in_progress' | 'completed';
+  last_location_update?: string | null;
   driver_name: string | null;
   driver_phone: string | null;
   vehicle_number: string | null;

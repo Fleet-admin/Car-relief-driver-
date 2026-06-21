@@ -686,18 +686,37 @@ export const SupabaseService = {
     return matched ? mapInquiryRowToBooking(matched) : null;
   },
 
-  async updateBookingCoords(bookingId: string, lat: number, lng: number): Promise<boolean> {
-    console.log('[Supabase Service] updateBookingCoords on inquiries:', bookingId, lat, lng);
+  async updateBookingCoords(bookingId: string, lat: number, lng: number, extra?: { speed?: number; heading?: number; trip_status?: 'confirmed' | 'driver_en_route' | 'trip_in_progress' | 'completed' }): Promise<boolean> {
+    console.log('[Supabase Service] updateBookingCoords on inquiries:', bookingId, lat, lng, extra);
     if (supabaseClient) {
       try {
+        const updatePayload: any = { 
+          driver_latitude: lat, 
+          driver_longitude: lng,
+          current_driver_latitude: lat,
+          current_driver_longitude: lng,
+          last_location_update: new Date().toISOString()
+        };
+        if (extra?.trip_status) {
+          updatePayload.trip_status = extra.trip_status;
+        }
+
         const { error } = await supabaseClient
           .from('inquiries')
-          .update({ driver_latitude: lat, driver_longitude: lng })
+          .update(updatePayload)
           .eq('id', bookingId);
 
         if (error) {
-          console.error('[Supabase Service error] updateBookingCoords error:', error);
-          throw error;
+          console.warn('[Supabase Service warning] updateBookingCoords full schema error, retrying standard schema:', error);
+          const standardPayload: any = { driver_latitude: lat, driver_longitude: lng };
+          if (extra?.trip_status) {
+            standardPayload.status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+          }
+          const { error: error2 } = await supabaseClient
+            .from('inquiries')
+            .update(standardPayload)
+            .eq('id', bookingId);
+          if (error2) throw error2;
         }
         return true;
       } catch (err) {
@@ -709,6 +728,11 @@ export const SupabaseService = {
     if (idx !== -1) {
       current[idx].driver_latitude = lat;
       current[idx].driver_longitude = lng;
+      current[idx].last_location_update = new Date().toISOString();
+      if (extra?.trip_status) {
+        current[idx].trip_status = extra.trip_status;
+        current[idx].status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+      }
       saveLocalInquiries([...current]);
       return true;
     }
@@ -722,12 +746,20 @@ export const SupabaseService = {
       try {
         const { error } = await supabaseClient
           .from('inquiries')
-          .update({ status: 'Active', trip_started_at: timestamp })
+          .update({ 
+            status: 'Active', 
+            trip_status: 'driver_en_route',
+            trip_started_at: timestamp 
+          })
           .eq('id', bookingId);
 
         if (error) {
-          console.error('[Supabase Service error] startBookingTrip error:', error);
-          throw error;
+          console.warn('[Supabase Service error] startBookingTrip full schema error, retrying standard schema:', error);
+          const { error: error2 } = await supabaseClient
+            .from('inquiries')
+            .update({ status: 'Active', trip_started_at: timestamp })
+            .eq('id', bookingId);
+          if (error2) throw error2;
         }
         return true;
       } catch (err) {
@@ -738,6 +770,7 @@ export const SupabaseService = {
     const idx = current.findIndex(b => b.id === bookingId);
     if (idx !== -1) {
       current[idx].status = 'Active';
+      current[idx].trip_status = 'driver_en_route';
       current[idx].trip_started_at = timestamp;
       saveLocalInquiries([...current]);
       return true;
@@ -752,12 +785,20 @@ export const SupabaseService = {
       try {
         const { error } = await supabaseClient
           .from('inquiries')
-          .update({ status: 'Completed', trip_completed_at: timestamp })
+          .update({ 
+            status: 'Completed', 
+            trip_status: 'completed',
+            trip_completed_at: timestamp 
+          })
           .eq('id', bookingId);
 
         if (error) {
-          console.error('[Supabase Service error] completeBookingTrip error:', error);
-          throw error;
+          console.warn('[Supabase Service error] completeBookingTrip full schema error, retrying standard schema:', error);
+          const { error: error2 } = await supabaseClient
+            .from('inquiries')
+            .update({ status: 'Completed', trip_completed_at: timestamp })
+            .eq('id', bookingId);
+          if (error2) throw error2;
         }
         return true;
       } catch (err) {
@@ -768,6 +809,7 @@ export const SupabaseService = {
     const idx = current.findIndex(b => b.id === bookingId);
     if (idx !== -1) {
       current[idx].status = 'Completed';
+      current[idx].trip_status = 'completed';
       current[idx].trip_completed_at = timestamp;
       saveLocalInquiries([...current]);
       return true;
@@ -881,6 +923,26 @@ export const SupabaseService = {
 // Helper mapper to transform an inquiry's status & track attributes into Booking representation.
 export function mapInquiryRowToBooking(inq: any): Booking | null {
   if (!inq) return null;
+  
+  const rawStatus = inq.status;
+  let statusMapped: 'Pending' | 'Confirmed' | 'Active' | 'Completed' = 'Confirmed';
+  if (rawStatus === 'Completed' || rawStatus === 'completed') {
+    statusMapped = 'Completed';
+  } else if (rawStatus === 'Active' || rawStatus === 'driver_en_route' || rawStatus === 'trip_in_progress') {
+    statusMapped = 'Active';
+  } else if (rawStatus === 'Confirmed' || rawStatus === 'confirmed') {
+    statusMapped = 'Confirmed';
+  } else if (rawStatus === 'New' || rawStatus === 'Pending') {
+    statusMapped = 'Pending';
+  }
+
+  // Derive trip status if not directly present in DB
+  const derivedTripStatus = inq.trip_status || (
+    rawStatus === 'Completed' || rawStatus === 'completed' ? 'completed' :
+    rawStatus === 'Active' || rawStatus === 'driver_en_route' || rawStatus === 'trip_in_progress' ? 'driver_en_route' :
+    rawStatus === 'Confirmed' || rawStatus === 'confirmed' ? 'confirmed' : 'confirmed'
+  );
+
   return {
     id: inq.id,
     customer_name: inq.customer_name || inq.name || 'Customer',
@@ -889,7 +951,9 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
     destination_location: inq.drop_location || inq.destination_location || 'Not Specified',
     booking_date: inq.booking_date || inq.travel_date || '',
     booking_time: inq.booking_time || (inq.additional_requirements?.match(/Scheduled Departure:\s*([^\n\r]+)/)?.[1]) || '12:00 PM',
-    status: (inq.status === 'Completed' ? 'Completed' : inq.status === 'Active' ? 'Active' : 'Confirmed') as any,
+    status: statusMapped,
+    trip_status: derivedTripStatus,
+    last_location_update: inq.last_location_update || inq.updated_at || null,
     driver_name: inq.driver_name || null,
     driver_phone: inq.driver_phone || null,
     vehicle_number: inq.vehicle_number || null,

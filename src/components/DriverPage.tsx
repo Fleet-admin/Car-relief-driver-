@@ -18,7 +18,26 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   
   const geoWatchId = useRef<number | null>(null);
   const updateIntervalId = useRef<any | null>(null);
-  const latestCoords = useRef<{ latitude: number; longitude: number } | null>(null);
+  const latestCoords = useRef<{ latitude: number; longitude: number; speed?: number | null; heading?: number | null } | null>(null);
+
+  // Haversine formula calculation for auto-transition check
+  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+      Math.cos(phi1) *
+        Math.cos(phi2) *
+        Math.sin(deltaLambda / 2) *
+        Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // returns distance in meters
+  };
 
   useEffect(() => {
     async function loadBooking() {
@@ -31,7 +50,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           setBooking(data);
           if (data.status === 'Active') {
             setTrackingActive(true);
-            startGPSWatch(data.id);
+            startGPSWatch(data.id, data);
           }
         }
       } catch (err) {
@@ -50,7 +69,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     };
   }, [driverToken]);
 
-  const startGPSWatch = (bookingId: string) => {
+  const startGPSWatch = (bookingId: string, currentBooking: Booking) => {
     if (!navigator.geolocation) {
       alert('Local GPS Geolocation is not supported by this browser/device.');
       return;
@@ -61,10 +80,10 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     // Request permission and watch position
     geoWatchId.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, speed, heading } = position.coords;
         setCurrentCoords({ latitude, longitude });
-        latestCoords.current = { latitude, longitude };
-        console.log('[GPS Tracking] Location sampled:', latitude, longitude);
+        latestCoords.current = { latitude, longitude, speed, heading };
+        console.log('[GPS Tracking] Location sampled:', latitude, longitude, 'speed:', speed, 'heading:', heading);
       },
       (geoError) => {
         console.error('[GPS Tracking] Geolocation watch error:', geoError);
@@ -79,9 +98,34 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     // Set up interval to write coordinates to Supabase every 6 seconds
     updateIntervalId.current = setInterval(async () => {
       if (latestCoords.current) {
-        const { latitude, longitude } = latestCoords.current;
+        const { latitude, longitude, speed, heading } = latestCoords.current;
         console.log('[GPS Tracking] Uploading coordinates to database:', latitude, longitude);
-        await SupabaseService.updateBookingCoords(bookingId, latitude, longitude);
+        
+        let targetTripStatus: 'driver_en_route' | 'trip_in_progress' = 'driver_en_route';
+        
+        // If currentBooking or latest local booking state is trip_in_progress, keep it.
+        // Otherwise, run check to see if we reached pickup point.
+        if (currentBooking.trip_status === 'trip_in_progress') {
+          targetTripStatus = 'trip_in_progress';
+        } else {
+          const pLat = currentBooking.pickup_latitude;
+          const pLng = currentBooking.pickup_longitude;
+          if (pLat && pLng) {
+            const distanceToPickup = getDistanceInMeters(latitude, longitude, pLat, pLng);
+            if (distanceToPickup <= 100) {
+              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 100m of pickup point. Setting trip_status to trip_in_progress.');
+              targetTripStatus = 'trip_in_progress';
+              currentBooking.trip_status = 'trip_in_progress';
+              setBooking(prev => prev ? { ...prev, trip_status: 'trip_in_progress' } : null);
+            }
+          }
+        }
+
+        await SupabaseService.updateBookingCoords(bookingId, latitude, longitude, {
+          speed: speed || undefined,
+          heading: heading || undefined,
+          trip_status: targetTripStatus
+        });
       }
     }, 6000);
   };
@@ -112,22 +156,45 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
       // First, get initial coordinate to ensure permission is approved
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const { latitude, longitude } = position.coords;
-          latestCoords.current = { latitude, longitude };
+          const { latitude, longitude, speed, heading } = position.coords;
+          latestCoords.current = { latitude, longitude, speed, heading };
           setCurrentCoords({ latitude, longitude });
 
           // Start trip in DB
           const success = await SupabaseService.startBookingTrip(booking.id);
           if (success) {
-            // Upload initial coordinates immediately
-            await SupabaseService.updateBookingCoords(booking.id, latitude, longitude);
+            // Determine initial status: if already near pickup (<100m), set 'trip_in_progress', else 'driver_en_route'
+            let initialTripStatus: 'driver_en_route' | 'trip_in_progress' = 'driver_en_route';
+            if (booking.pickup_latitude && booking.pickup_longitude) {
+              const distanceToPickup = getDistanceInMeters(latitude, longitude, booking.pickup_latitude, booking.pickup_longitude);
+              if (distanceToPickup <= 100) {
+                initialTripStatus = 'trip_in_progress';
+              }
+            }
+
+            // Upload initial coordinates immediately with trip status
+            await SupabaseService.updateBookingCoords(booking.id, latitude, longitude, {
+              speed: speed || undefined,
+              heading: heading || undefined,
+              trip_status: initialTripStatus
+            });
             
             // Re-fetch booking or set state
-            setBooking(prev => prev ? { ...prev, status: 'Active', started_at: new Date().toISOString(), last_latitude: latitude, last_longitude: longitude } : null);
+            setBooking(prev => prev ? { 
+              ...prev, 
+              status: 'Active', 
+              trip_status: initialTripStatus,
+              started_at: new Date().toISOString(), 
+              last_latitude: latitude, 
+              last_longitude: longitude 
+            } : null);
             setTrackingActive(true);
             
             // Start periodic updates
-            startGPSWatch(booking.id);
+            startGPSWatch(booking.id, {
+              ...booking,
+              trip_status: initialTripStatus
+            });
           } else {
             setError('Failed to update trip start in database.');
           }
