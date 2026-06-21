@@ -23,6 +23,8 @@ export default function ConfirmBookingModal({ inquiry, onClose, onConfirmComplet
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<Booking | null>(null);
   const [copiedLink, setCopiedLink] = useState<'driver' | 'customer' | null>(null);
+  const [driverSent, setDriverSent] = useState(false);
+  const [customerSent, setCustomerSent] = useState(false);
 
   const handleConfirmSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -342,7 +344,11 @@ ${trackingLink}`;
                     href={makeDriverWhatsAppLink()}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-3.5 bg-neutral-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition hover:bg-neutral-850 flex items-center justify-center gap-2 shadow-md active:scale-95"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDriverSent(true);
+                    }}
+                    className="w-full py-3.5 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md active:scale-95"
                   >
                     <MessageSquare className="w-4 h-4 text-amber-400 fill-amber-400 animate-bounce" />
                     Send Driver WhatsApp
@@ -352,16 +358,39 @@ ${trackingLink}`;
                     href={makeCustomerWhatsAppLink()}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full py-3.5 bg-[#10B981] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition hover:bg-emerald-600 flex items-center justify-center gap-2 shadow-md active:scale-95"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomerSent(true);
+                    }}
+                    className="w-full py-3.5 bg-[#10B981] hover:bg-emerald-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md active:scale-95"
                   >
                     <MessageSquare className="w-4 h-4 fill-white shrink-0" />
                     Send Customer WhatsApp
                   </a>
                 </div>
 
+                {/* Live confirmation success tracking indicators */}
+                {(driverSent || customerSent) && (
+                  <div className="space-y-1.5 pt-1">
+                    {customerSent && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 text-xs font-bold text-emerald-800 flex items-center justify-center gap-2 animate-fade-in">
+                        <span>Customer Message Sent ✅</span>
+                      </div>
+                    )}
+                    {driverSent && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-2.5 text-xs font-bold text-emerald-800 flex items-center justify-center gap-2 animate-fade-in">
+                        <span>Driver Message Sent ✅</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="pt-2">
                   <button
-                    onClick={onClose}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClose();
+                    }}
                     className="px-4 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition"
                   >
                     Done & Close
