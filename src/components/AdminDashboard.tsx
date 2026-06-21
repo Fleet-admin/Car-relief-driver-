@@ -31,10 +31,12 @@ import {
   Sliders,
   ChevronDown,
   Upload,
-  Image
+  Image,
+  X
 } from 'lucide-react';
 import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
+import ConfirmBookingModal from './ConfirmBookingModal';
 
 // Helper to extract estimated fare configuration badges
 const parseEstimateDetails = (requirements: string | null) => {
@@ -84,6 +86,9 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
 
   // Selected Inquiry detail view modal
   const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+
+  // Active inquiry being confirmed and dispatched
+  const [confirmingInquiry, setConfirmingInquiry] = useState<Inquiry | null>(null);
 
   // Expanded inquiry card ID state for accordion view
   const [expandedInquiryId, setExpandedInquiryId] = useState<string | null>(null);
@@ -287,13 +292,14 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   };
 
   const getMetrics = (): DashboardMetrics => {
-    const metrics: DashboardMetrics = { total: 0, new: 0, contacted: 0, confirmed: 0, closed: 0 };
+    const metrics: DashboardMetrics = { total: 0, new: 0, confirmed: 0, active: 0, completed: 0, cancelled: 0 };
     inquiries.forEach((item) => {
       metrics.total++;
       if (item.status === 'New') metrics.new++;
-      if (item.status === 'Contacted') metrics.contacted++;
-      if (item.status === 'Confirmed') metrics.confirmed++;
-      if (item.status === 'Closed') metrics.closed++;
+      else if (item.status === 'Confirmed') metrics.confirmed++;
+      else if (item.status === 'Active') metrics.active++;
+      else if (item.status === 'Completed' || item.status === 'Closed') metrics.completed++;
+      else if (item.status === 'Cancelled') metrics.cancelled++;
     });
     return metrics;
   };
@@ -407,7 +413,10 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   // Search filter evaluation
   const filteredInquiries = inquiries
     .filter((item) => {
-      const matchStatus = statusFilter === 'All' || item.status === statusFilter;
+      const matchStatus =
+        statusFilter === 'All' ||
+        item.status === statusFilter ||
+        (statusFilter === 'Completed' && item.status === 'Closed');
       const term = searchQuery.toLowerCase().trim();
       const matchSearch =
         !term ||
@@ -556,66 +565,77 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           </div>
         </div>
       )}
-
-      {/* Grid of Real-time Computed Metrics Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4" id="metrics-grid">
+       {/* Grid of Real-time Computed Metrics Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="metrics-grid">
         {/* Total stats Card */}
-        <div className="bg-white border border-neutral-200 rounded-2xl p-5 shadow-sm text-left">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Total inquiries</span>
-            <span className="p-1 px-2 text-[10px] font-bold bg-neutral-100 text-neutral-700 rounded-md">All</span>
+        <div className="bg-white border border-neutral-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Total</span>
+            <span className="p-1 px-1.5 text-[9px] font-bold bg-neutral-100 text-neutral-700 rounded">All Leads</span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span id="metric-total-active" className="text-3xl font-extrabold text-neutral-950 font-sans">{stats.total}</span>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-total-active" className="text-2xl font-extrabold text-neutral-950 font-sans">{stats.total}</span>
             <span className="text-[10px] text-neutral-400">leads</span>
           </div>
         </div>
 
         {/* New stats Card */}
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm text-left">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">New alerts</span>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-emerald-800 tracking-wider">New</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span id="metric-new-active" className="text-3xl font-extrabold text-emerald-950 font-sans">{stats.new}</span>
-            <span className="text-[10px] text-emerald-500 font-bold">Awaiting Contact</span>
-          </div>
-        </div>
-
-        {/* Contacted stats Card */}
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm text-left">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider font-sans">Contacted</span>
-            <span className="p-1 text-[9px] font-bold text-amber-600">Manual Check</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span id="metric-contacted-active" className="text-3xl font-extrabold text-neutral-950 font-sans">{stats.contacted}</span>
-            <span className="text-[10px] text-amber-700">Called</span>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-new-active" className="text-2xl font-extrabold text-emerald-950 font-sans">{stats.new}</span>
+            <span className="text-[10px] text-emerald-500 font-bold">Unconfirmed</span>
           </div>
         </div>
 
         {/* Confirmed stats Card */}
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 shadow-sm text-left">
-          <div className="flex items-center justify-between mb-2">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] uppercase font-bold text-indigo-800 tracking-wider font-sans">Confirmed</span>
-            <span className="p-1 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">Planned</span>
+            <span className="p-0.5 px-1.5 bg-indigo-100 text-indigo-700 rounded text-[9px] font-bold">Planned</span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span id="metric-confirmed-active" className="text-3xl font-extrabold text-neutral-950 font-sans">{stats.confirmed}</span>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-confirmed-active" className="text-2xl font-extrabold text-indigo-950 font-sans">{stats.confirmed}</span>
             <span className="text-[10px] text-indigo-700">Dispatched</span>
           </div>
         </div>
 
-        {/* Completed stats Card */}
-        <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-5 shadow-sm text-left col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] uppercase font-bold text-neutral-450 tracking-wider">Completed</span>
-            <span className="p-1 text-[9px] text-neutral-400 font-sans">Completed</span>
+        {/* Active stats Card */}
+        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-sky-800 tracking-wider font-sans">Active</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
           </div>
-          <div className="flex items-baseline gap-2">
-            <span id="metric-closed-active" className="text-3xl font-extrabold text-neutral-450 font-sans">{stats.closed}</span>
-            <span className="text-[10px] text-neutral-450">Completed</span>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-active-trips" className="text-2xl font-extrabold text-sky-950 font-sans">{stats.active}</span>
+            <span className="text-[10px] text-sky-700 font-bold">En Route</span>
+          </div>
+        </div>
+
+        {/* Completed stats Card */}
+        <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-neutral-450 tracking-wider">Completed</span>
+            <span className="p-0.5 px-1.5 bg-neutral-200 text-neutral-600 rounded text-[9px] font-bold">Done</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-completed-active" className="text-2xl font-extrabold text-neutral-950 font-sans">{stats.completed}</span>
+            <span className="text-[10px] text-neutral-450">Trips</span>
+          </div>
+        </div>
+
+        {/* Cancelled stats Card */}
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 shadow-sm text-left">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold text-rose-800 tracking-wider font-sans">Cancelled</span>
+            <span className="p-0.5 px-1.5 bg-rose-100 text-rose-700 rounded text-[9px] font-bold">Void</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span id="metric-cancelled-active" className="text-2xl font-extrabold text-rose-950 font-sans">{stats.cancelled}</span>
+            <span className="text-[10px] text-rose-600">Rejects</span>
           </div>
         </div>
       </div>
@@ -643,7 +663,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Type name, phone, service type..."
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 transition-all font-sans animate-pulse-once"
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-neutral-50 border border-neutral-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 transition-all font-sans"
                 />
               </div>
             </div>
@@ -654,7 +674,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                 Inquiry Status State
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {(['All', 'New', 'Contacted', 'Confirmed', 'Closed'] as const).map((stat) => (
+                {(['All', 'New', 'Confirmed', 'Active', 'Completed', 'Cancelled'] as const).map((stat) => (
                   <button
                     key={stat}
                     type="button"
@@ -666,7 +686,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                         : 'bg-neutral-100 hover:bg-neutral-150 text-neutral-600'
                     }`}
                   >
-                    {stat === 'Closed' ? 'Completed' : stat}
+                    {stat}
                   </button>
                 ))}
               </div>
@@ -1177,22 +1197,26 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                             className={`inline-flex items-center gap-1.5 text-[11px] font-bold font-sans px-2.5 py-1 rounded-full ${
                               inq.status === 'New'
                                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-100'
-                                : inq.status === 'Contacted'
-                                ? 'bg-amber-50 text-amber-800 border border-amber-100'
                                 : inq.status === 'Confirmed'
                                 ? 'bg-indigo-50 text-indigo-800 border border-indigo-100'
-                                : 'bg-neutral-100 text-neutral-600 border border-neutral-200'
+                                : inq.status === 'Active'
+                                ? 'bg-sky-50 text-sky-850 border border-sky-100'
+                                : inq.status === 'Completed' || inq.status === 'Closed'
+                                ? 'bg-neutral-100 text-neutral-600 border border-neutral-200'
+                                : 'bg-rose-50 text-rose-800 border border-rose-100'
                             }`}
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
                                 inq.status === 'New'
                                   ? 'bg-emerald-500'
-                                  : inq.status === 'Contacted'
-                                  ? 'bg-amber-500'
                                   : inq.status === 'Confirmed'
                                   ? 'bg-indigo-500'
-                                  : 'bg-neutral-400'
+                                  : inq.status === 'Active'
+                                  ? 'bg-sky-500 animate-ping'
+                                  : inq.status === 'Completed' || inq.status === 'Closed'
+                                  ? 'bg-neutral-400'
+                                  : 'bg-rose-500'
                               }`}
                             />
                             {inq.status === 'Closed' ? 'Completed' : inq.status}
@@ -1353,45 +1377,58 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
 
                           {/* Control Action Tools - Row inside expansion details */}
                           <div className="pt-4 border-t border-neutral-150 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                            {/* Active status update box */}
+                            {/* Current status display badge */}
                             <div
                               onClick={(e) => e.stopPropagation()}
                               className="flex items-center gap-2"
                             >
-                              <label
-                                htmlFor={`status-dropdown-${inq.id}`}
-                                className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-sans"
-                              >
-                                Modify Status:
-                              </label>
-                              <select
-                                id={`status-dropdown-${inq.id}`}
-                                value={inq.status}
-                                onChange={(e) =>
-                                  handleUpdateStatus(inq.id, e.target.value as InquiryStatus)
-                                }
-                                className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border focus:outline-none cursor-pointer ${
+                              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest font-sans">
+                                Current Status:
+                              </span>
+                              <span
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold font-sans px-2.5 py-1 rounded-full ${
                                   inq.status === 'New'
-                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                    : inq.status === 'Contacted'
-                                    ? 'bg-amber-50 border-amber-200 text-amber-800'
+                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-150'
                                     : inq.status === 'Confirmed'
-                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800'
-                                    : 'bg-neutral-100 border-neutral-300 text-neutral-600'
+                                    ? 'bg-indigo-50 text-indigo-800 border border-indigo-150'
+                                    : inq.status === 'Active'
+                                    ? 'bg-sky-50 text-sky-850 border border-sky-150'
+                                    : inq.status === 'Completed' || inq.status === 'Closed'
+                                    ? 'bg-neutral-50 text-neutral-650 border border-neutral-200'
+                                    : 'bg-rose-50 text-rose-800 border border-rose-150'
                                 }`}
                               >
-                                <option value="New">🟢 New Alert</option>
-                                <option value="Contacted">🟡 Contacted Customer</option>
-                                <option value="Confirmed">🔵 Confirmed Booking</option>
-                                <option value="Closed">⚪ Completed</option>
-                              </select>
+                                {inq.status === 'Closed' ? 'Completed' : inq.status}
+                              </span>
                             </div>
 
                             {/* Push contact communications actions */}
                             <div
                               onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 flex-wrap"
                             >
+                              {inq.status === 'New' && (
+                                <button
+                                  onClick={() => setConfirmingInquiry(inq)}
+                                  id={`btn-confirm-booking-${inq.id}`}
+                                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold bg-[#10B981] hover:bg-[#10B981]/90 text-white rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Confirm Booking
+                                </button>
+                              )}
+
+                              {(inq.status === 'Confirmed' || inq.status === 'Active') && (
+                                <button
+                                  onClick={() => handleUpdateStatus(inq.id, 'Cancelled')}
+                                  id={`btn-cancel-booking-${inq.id}`}
+                                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  Cancel Booking
+                                </button>
+                              )}
+
                               <a
                                 href={`tel:${inq.phone}`}
                                 id={`btn-call-customer-${inq.id}`}
@@ -1420,7 +1457,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
                               <button
                                 onClick={() => handleDelete(inq.id)}
                                 id={`btn-delete-inquiry-${inq.id}`}
-                                className="p-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                                className="p-1.5 border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition-colors animate-fade-in"
                                 title="Delete Lead Permanent"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1437,6 +1474,22 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
           </div>
         </div>
       </div>
+
+      {/* Confirm & Dispatch Driver Assignment Modal overlay */}
+      <AnimatePresence>
+        {confirmingInquiry && (
+          <ConfirmBookingModal
+            inquiry={confirmingInquiry}
+            onClose={() => setConfirmingInquiry(null)}
+            onConfirmComplete={(updatedInquiry) => {
+              setInquiries((prev) =>
+                prev.map((item) => (item.id === updatedInquiry.id ? updatedInquiry : item))
+              );
+              onNotifyTriggered(`Inquiry for ${updatedInquiry.name} has been successfully confirmed and dispatched!`);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

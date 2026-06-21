@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Inquiry, InquiryStatus, ServiceType, VehicleCategory } from '../types';
+import { Inquiry, InquiryStatus, ServiceType, VehicleCategory, Booking } from '../types';
 
 // Read configuration from environment variables
 const getSupabaseConfig = () => {
@@ -579,4 +579,348 @@ export const SupabaseService = {
 
     return { success: true };
   },
+
+  async queryBookings(): Promise<Booking[]> {
+    console.log('[Supabase Service] queryBookings called.');
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('bookings')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('[Supabase Service error] queryBookings error:', error);
+          throw error;
+        }
+        return (data || []) as Booking[];
+      } catch (err: any) {
+        console.error('[Supabase Service query failure] Falling back to local bookings storage:', err);
+        return getLocalBookings();
+      }
+    }
+    return getLocalBookings();
+  },
+
+  async insertBooking(bookingData: Omit<Booking, 'id' | 'created_at'>): Promise<Booking> {
+    const newBooking: Booking = {
+      ...bookingData,
+      id: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+    };
+
+    console.log('[Supabase Service] insertBooking payload:', newBooking);
+
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('bookings')
+          .insert([newBooking])
+          .select();
+
+        if (error) {
+          console.error('[Supabase Service error] insertBooking error:', error);
+          throw error;
+        }
+
+        if (data && data[0]) {
+          console.log('[Supabase Service success] Booking inserted to Supabase:', data[0]);
+          return data[0] as Booking;
+        }
+      } catch (err: any) {
+        console.error('[Supabase Service write failure] insertBooking failed. Falling back to local bookings storage:', err);
+      }
+    }
+
+    const current = getLocalBookings();
+    const updated = [newBooking, ...current];
+    saveLocalBookings(updated);
+    return newBooking;
+  },
+
+  async getBookingByDriverToken(token: string): Promise<Booking | null> {
+    console.log('[Supabase Service] getBookingByDriverToken from inquiries:', token);
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('inquiries')
+          .select('*')
+          .eq('driver_token', token)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Supabase Service error] getBookingByDriverToken error:', error);
+          throw error;
+        }
+        if (data) return mapInquiryRowToBooking(data);
+      } catch (err) {
+        console.error('[Supabase Service query failure] getBookingByDriverToken fallback to local inquiries:', err);
+      }
+    }
+    const current = getLocalInquiries();
+    const matched = current.find(b => b.driver_token === token);
+    return matched ? mapInquiryRowToBooking(matched) : null;
+  },
+
+  async getBookingByTrackingToken(token: string): Promise<Booking | null> {
+    console.log('[Supabase Service] getBookingByTrackingToken from inquiries:', token);
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('inquiries')
+          .select('*')
+          .eq('tracking_token', token)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Supabase Service error] getBookingByTrackingToken error:', error);
+          throw error;
+        }
+        if (data) return mapInquiryRowToBooking(data);
+      } catch (err) {
+        console.error('[Supabase Service query failure] getBookingByTrackingToken fallback to local inquiries:', err);
+      }
+    }
+    const current = getLocalInquiries();
+    const matched = current.find(b => b.tracking_token === token);
+    return matched ? mapInquiryRowToBooking(matched) : null;
+  },
+
+  async updateBookingCoords(bookingId: string, lat: number, lng: number): Promise<boolean> {
+    console.log('[Supabase Service] updateBookingCoords on inquiries:', bookingId, lat, lng);
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('inquiries')
+          .update({ driver_latitude: lat, driver_longitude: lng })
+          .eq('id', bookingId);
+
+        if (error) {
+          console.error('[Supabase Service error] updateBookingCoords error:', error);
+          throw error;
+        }
+        return true;
+      } catch (err) {
+        console.error('[Supabase Service failure] updateBookingCoords exception, using local fallback:', err);
+      }
+    }
+    const current = getLocalInquiries();
+    const idx = current.findIndex(b => b.id === bookingId);
+    if (idx !== -1) {
+      current[idx].driver_latitude = lat;
+      current[idx].driver_longitude = lng;
+      saveLocalInquiries([...current]);
+      return true;
+    }
+    return false;
+  },
+
+  async startBookingTrip(bookingId: string): Promise<boolean> {
+    const timestamp = new Date().toISOString();
+    console.log('[Supabase Service] startBookingTrip on inquiries:', bookingId, timestamp);
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('inquiries')
+          .update({ status: 'Active', trip_started_at: timestamp })
+          .eq('id', bookingId);
+
+        if (error) {
+          console.error('[Supabase Service error] startBookingTrip error:', error);
+          throw error;
+        }
+        return true;
+      } catch (err) {
+        console.error('[Supabase Service failure] startBookingTrip exception, using local fallback:', err);
+      }
+    }
+    const current = getLocalInquiries();
+    const idx = current.findIndex(b => b.id === bookingId);
+    if (idx !== -1) {
+      current[idx].status = 'Active';
+      current[idx].trip_started_at = timestamp;
+      saveLocalInquiries([...current]);
+      return true;
+    }
+    return false;
+  },
+
+  async completeBookingTrip(bookingId: string): Promise<boolean> {
+    const timestamp = new Date().toISOString();
+    console.log('[Supabase Service] completeBookingTrip on inquiries:', bookingId, timestamp);
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('inquiries')
+          .update({ status: 'Completed', trip_completed_at: timestamp })
+          .eq('id', bookingId);
+
+        if (error) {
+          console.error('[Supabase Service error] completeBookingTrip error:', error);
+          throw error;
+        }
+        return true;
+      } catch (err) {
+        console.error('[Supabase Service failure] completeBookingTrip exception, using local fallback:', err);
+      }
+    }
+    const current = getLocalInquiries();
+    const idx = current.findIndex(b => b.id === bookingId);
+    if (idx !== -1) {
+      current[idx].status = 'Completed';
+      current[idx].trip_completed_at = timestamp;
+      saveLocalInquiries([...current]);
+      return true;
+    }
+    return false;
+  },
+
+  subscribeToBookingRealtime(bookingId: string, onUpdate: (booking: Booking) => void): () => void {
+    let activeChannel: any = null;
+    if (supabaseClient) {
+      try {
+        activeChannel = supabaseClient
+          .channel(`booking-channel-${bookingId}`)
+          .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'inquiries', filter: `id=eq.${bookingId}` },
+            (payload) => {
+              const nextRecord = payload.new as any;
+              if (nextRecord) {
+                const mapped = mapInquiryRowToBooking(nextRecord);
+                if (mapped) onUpdate(mapped);
+              }
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.error('Supabase booking realtime subscribe error:', err);
+      }
+    }
+
+    const localChangeHandler = (e: Event) => {
+      const customEvent = e as CustomEvent<Inquiry[]>;
+      const matched = customEvent.detail.find(b => b.id === bookingId);
+      if (matched) {
+        const mapped = mapInquiryRowToBooking(matched);
+        if (mapped) onUpdate(mapped);
+      }
+    };
+
+    window.addEventListener('supabase-realtime-inquiry', localChangeHandler);
+
+    return () => {
+      if (activeChannel) {
+        try {
+          supabaseClient?.removeChannel(activeChannel);
+        } catch (err) {
+          console.error('Failed to cleanup Supabase booking channel', err);
+        }
+      }
+      window.removeEventListener('supabase-realtime-inquiry', localChangeHandler);
+    };
+  },
+
+  async confirmInquiry(
+    id: string,
+    driverName: string,
+    driverPhone: string,
+    vehicleNumber: string,
+    driverToken: string,
+    trackingToken: string,
+    additionalRequirements?: string | null
+  ): Promise<Inquiry | null> {
+    console.log('[Supabase Service] confirmInquiry:', id);
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('inquiries')
+          .update({
+            status: 'Confirmed',
+            driver_name: driverName,
+            driver_phone: driverPhone,
+            vehicle_number: vehicleNumber,
+            driver_token: driverToken,
+            tracking_token: trackingToken,
+            additional_requirements: additionalRequirements
+          })
+          .eq('id', id)
+          .select()
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Supabase Service error] confirmInquiry database error:', error);
+          throw error;
+        }
+        return data as Inquiry;
+      } catch (err) {
+        console.error('[Supabase Service failure] confirmInquiry failed, using local fallback:', err);
+      }
+    }
+
+    const currentList = getLocalInquiries();
+    const index = currentList.findIndex((item) => item.id === id);
+    if (index !== -1) {
+      currentList[index] = {
+        ...currentList[index],
+        status: 'Confirmed',
+        driver_name: driverName,
+        driver_phone: driverPhone,
+        vehicle_number: vehicleNumber,
+        driver_token: driverToken,
+        tracking_token: trackingToken,
+        additional_requirements: additionalRequirements || currentList[index].additional_requirements
+      };
+      saveLocalInquiries([...currentList]);
+      return currentList[index];
+    }
+    return null;
+  }
+};
+
+// Helper mapper to transform an inquiry's status & track attributes into Booking representation.
+export function mapInquiryRowToBooking(inq: any): Booking | null {
+  if (!inq) return null;
+  return {
+    id: inq.id,
+    customer_name: inq.customer_name || inq.name || 'Customer',
+    customer_phone: inq.customer_phone || inq.phone || '',
+    pickup_location: inq.pickup_location || 'Not Specified',
+    destination_location: inq.drop_location || inq.destination_location || 'Not Specified',
+    booking_date: inq.booking_date || inq.travel_date || '',
+    booking_time: inq.booking_time || (inq.additional_requirements?.match(/Scheduled Departure:\s*([^\n\r]+)/)?.[1]) || '12:00 PM',
+    status: (inq.status === 'Completed' ? 'Completed' : inq.status === 'Active' ? 'Active' : 'Confirmed') as any,
+    driver_name: inq.driver_name || null,
+    driver_phone: inq.driver_phone || null,
+    vehicle_number: inq.vehicle_number || null,
+    driver_token: inq.driver_token || null,
+    tracking_token: inq.tracking_token || null,
+    started_at: inq.trip_started_at || null,
+    completed_at: inq.trip_completed_at || null,
+    last_latitude: inq.driver_latitude || null,
+    last_longitude: inq.driver_longitude || null,
+    pickup_latitude: inq.pickup_latitude || null,
+    pickup_longitude: inq.pickup_longitude || null,
+    drop_latitude: inq.drop_latitude || null,
+    drop_longitude: inq.drop_longitude || null,
+    created_at: inq.created_at || new Date().toISOString(),
+  };
+}
+
+// Local storage booking helpers
+const LOCAL_BOOKINGS_KEY = 'car_driver_bookings_v2';
+
+const getLocalBookings = (): Booking[] => {
+  const stored = localStorage.getItem(LOCAL_BOOKINGS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalBookings = (bookings: Booking[]) => {
+  localStorage.setItem(LOCAL_BOOKINGS_KEY, JSON.stringify(bookings));
+  window.dispatchEvent(new CustomEvent('supabase-realtime-booking', { detail: bookings }));
 };

@@ -43,6 +43,8 @@ import InquiryForm from './components/InquiryForm';
 import AdminDashboard from './components/AdminDashboard';
 import FloatingWhatsApp from './components/FloatingWhatsApp';
 import { InstallPrompt } from './components/InstallPrompt';
+import DriverPage from './components/DriverPage';
+import CustomerTrackingPage from './components/CustomerTrackingPage';
 import { SupabaseService } from './lib/supabase';
 
 interface LocationData {
@@ -161,8 +163,11 @@ function resolveCategoryDetails(name: string) {
 export default function App() {
   // Early check to identify a completely fresh session (fresh app launch) vs page reload/refresh
   if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasMagicToken = urlParams.has('driver_token') || urlParams.has('tracking_token');
+
     const isFreshSession = !sessionStorage.getItem('app_session_active');
-    if (isFreshSession) {
+    if (isFreshSession && !hasMagicToken) {
       // Clear persistence keys to ensure fresh launches always initialize on the Home page
       localStorage.removeItem('active_tab');
       localStorage.removeItem('active_nav');
@@ -175,6 +180,8 @@ export default function App() {
         url.searchParams.delete('nav');
         window.history.replaceState({}, '', url.toString());
       }
+    } else if (hasMagicToken) {
+      sessionStorage.setItem('app_session_active', 'true');
     }
   }
 
@@ -203,6 +210,23 @@ export default function App() {
       window.history.pushState({}, '', url.toString());
     }
   };
+
+  // Live Tracking and Driver Workspace magic link routing
+  const [driverToken, setDriverToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('driver_token');
+    }
+    return null;
+  });
+
+  const [trackingToken, setTrackingToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tracking_token');
+    }
+    return null;
+  });
 
   // Nav sub-views for Client mode (persisted as well!)
   const [activeNav, setActiveNav] = useState<string>(() => {
@@ -562,7 +586,27 @@ export default function App() {
 
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 md:pb-8">
         <AnimatePresence mode="wait">
-          {activeTab === 'client' ? (
+          {driverToken ? (
+            <motion.div
+              key="driver-view"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="w-full"
+            >
+              <DriverPage driverToken={driverToken} />
+            </motion.div>
+          ) : trackingToken ? (
+            <motion.div
+              key="tracking-view"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="w-full"
+            >
+              <CustomerTrackingPage trackingToken={trackingToken} />
+            </motion.div>
+          ) : activeTab === 'client' ? (
             <motion.div
               key="client-view"
               initial={{ opacity: 0 }}
@@ -1279,7 +1323,7 @@ export default function App() {
 
 
       {/* Embedded support operator drawer bubble - only visible in frontend client screens */}
-      {activeTab === 'client' && (
+      {activeTab === 'client' && !driverToken && !trackingToken && (
         <FloatingWhatsApp
           phoneNumber={contactPhone}
           whatsappNumber={contactPhone}
@@ -1288,7 +1332,7 @@ export default function App() {
       )}
 
       {/* Mobile-Only Fixed Bottom Navigation Bar */}
-      {activeTab === 'client' && (
+      {activeTab === 'client' && !driverToken && !trackingToken && (
         <nav 
           className="fixed bottom-0 left-0 right-0 md:hidden bg-white/95 backdrop-blur-md border-t border-neutral-200 shadow-[0_-8px_30px_rgb(0,0,0,0.12)] rounded-t-2xl z-[9990] pb-6 pt-1.5 px-1"
           id="mobile-bottom-navigation-bar"

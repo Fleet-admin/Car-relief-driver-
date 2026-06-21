@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type InquiryStatus = 'New' | 'Contacted' | 'Confirmed' | 'Closed';
+export type InquiryStatus = 'New' | 'Contacted' | 'Confirmed' | 'Active' | 'Completed' | 'Cancelled' | 'Closed';
 
 export type ServiceType =
   | 'Fleet Booking'
@@ -31,6 +31,19 @@ export interface Inquiry {
   status: InquiryStatus;
   created_at: string;
   vehicle_category?: string | null;
+  
+  // New driver and trip tracking columns
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  vehicle_number?: string | null;
+  driver_token?: string | null;
+  tracking_token?: string | null;
+  trip_started_at?: string | null;
+  trip_completed_at?: string | null;
+  driver_latitude?: number | null;
+  driver_longitude?: number | null;
+  driver_message_sent?: boolean | null;
+  customer_message_sent?: boolean | null;
 }
 
 export interface VehicleCategory {
@@ -52,7 +65,33 @@ export interface VehicleCategory {
 export interface DashboardMetrics {
   total: number;
   new: number;
-  contacted: number;
   confirmed: number;
-  closed: number;
+  active: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface Booking {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  pickup_location: string;
+  destination_location: string;
+  booking_date: string;
+  booking_time: string;
+  status: 'Pending' | 'Confirmed' | 'Active' | 'Completed';
+  driver_name: string | null;
+  driver_phone: string | null;
+  vehicle_number: string | null;
+  driver_token: string | null;
+  tracking_token: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  last_latitude: number | null;
+  last_longitude: number | null;
+  pickup_latitude?: number | null;
+  pickup_longitude?: number | null;
+  drop_latitude?: number | null;
+  drop_longitude?: number | null;
+  created_at: string;
 }
