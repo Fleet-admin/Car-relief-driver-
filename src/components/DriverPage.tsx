@@ -122,8 +122,8 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           const pLng = liveBooking.pickup_longitude;
           if (pLat && pLng) {
             const distanceToPickup = getDistanceInMeters(latitude, longitude, pLat, pLng);
-            if (distanceToPickup <= 50) {
-              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 50m of pickup point. Setting trip_status to driver_arrived.');
+            if (distanceToPickup <= 10) {
+              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 10m of pickup point. Setting trip_status to driver_arrived.');
               targetTripStatus = 'driver_arrived';
               liveBooking.trip_status = 'driver_arrived';
               setBooking(prev => prev ? { ...prev, trip_status: 'driver_arrived' } : null);
@@ -173,11 +173,11 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           // Start trip in DB
           const success = await SupabaseService.startBookingTrip(booking.id);
           if (success) {
-            // Determine initial status: if already near pickup (<50m), set 'driver_arrived', else 'driver_en_route'
+            // Determine initial status: if already near pickup (<10m), set 'driver_arrived', else 'driver_en_route'
             let initialTripStatus: 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' = 'driver_en_route';
             if (booking.pickup_latitude && booking.pickup_longitude) {
               const distanceToPickup = getDistanceInMeters(latitude, longitude, booking.pickup_latitude, booking.pickup_longitude);
-              if (distanceToPickup <= 50) {
+              if (distanceToPickup <= 10) {
                 initialTripStatus = 'driver_arrived';
               }
             }

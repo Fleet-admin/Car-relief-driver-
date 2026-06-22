@@ -342,14 +342,20 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
     const isWorkingOrArrived = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
     const isArrived = booking.trip_status === 'driver_arrived';
     if (isWorkingOrArrived) {
-      statusMessageHeader = isArrived ? "Driver Arrived" : "Trip in progress";
+      statusMessageHeader = isArrived ? "Driver has arrived at your location" : "Trip in progress";
       if (distanceToDestination !== null) {
         distanceValue = formatDistance(distanceToDestination);
         etaValue = calculateETA(distanceToDestination);
         
         if (isArrived) {
-          proximityMessage = "Driver has arrived at your pickup location!";
-          proximityColor = "bg-emerald-100 text-emerald-900 border-emerald-350 animate-pulse font-semibold";
+          proximityMessage = "Driver has arrived at your location!";
+          proximityColor = "bg-emerald-100 text-emerald-950 border-emerald-300 animate-pulse font-semibold";
+          if (distanceToPickup !== null) {
+            distanceValue = formatDistance(distanceToPickup);
+          } else {
+            distanceValue = "0 m";
+          }
+          etaValue = "Arrived";
         } else if (distanceToDestination <= 120) {
           proximityMessage = "Vehicle has arrived at your destination! (within 100m)";
           proximityColor = "bg-emerald-50 text-emerald-800 border-emerald-250 animate-pulse";
