@@ -19,6 +19,12 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   const geoWatchId = useRef<number | null>(null);
   const updateIntervalId = useRef<any | null>(null);
   const latestCoords = useRef<{ latitude: number; longitude: number; speed?: number | null; heading?: number | null } | null>(null);
+  const bookingRef = useRef<Booking | null>(null);
+
+  // Sync ref with state
+  useEffect(() => {
+    bookingRef.current = booking;
+  }, [booking]);
 
   // Haversine formula calculation for auto-transition check
   const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -48,6 +54,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           setError('Invalid Driver link or booking expired.');
         } else {
           setBooking(data);
+          bookingRef.current = data;
           if (data.status === 'Active') {
             setTrackingActive(true);
             startGPSWatch(data.id, data);
@@ -97,7 +104,8 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
 
     // Set up interval to write coordinates to Supabase every 6 seconds
     updateIntervalId.current = setInterval(async () => {
-      if (latestCoords.current) {
+      const liveBooking = bookingRef.current || currentBooking;
+      if (latestCoords.current && liveBooking) {
         const { latitude, longitude, speed, heading } = latestCoords.current;
         console.log('[GPS Tracking] Uploading coordinates to database:', latitude, longitude);
         
@@ -105,17 +113,17 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
         
         // If currentBooking or latest local booking state is trip_in_progress, keep it.
         // Otherwise, run check to see if we reached pickup point.
-        if (currentBooking.trip_status === 'trip_in_progress') {
+        if (liveBooking.trip_status === 'trip_in_progress') {
           targetTripStatus = 'trip_in_progress';
         } else {
-          const pLat = currentBooking.pickup_latitude;
-          const pLng = currentBooking.pickup_longitude;
+          const pLat = liveBooking.pickup_latitude;
+          const pLng = liveBooking.pickup_longitude;
           if (pLat && pLng) {
             const distanceToPickup = getDistanceInMeters(latitude, longitude, pLat, pLng);
             if (distanceToPickup <= 100) {
               console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 100m of pickup point. Setting trip_status to trip_in_progress.');
               targetTripStatus = 'trip_in_progress';
-              currentBooking.trip_status = 'trip_in_progress';
+              liveBooking.trip_status = 'trip_in_progress';
               setBooking(prev => prev ? { ...prev, trip_status: 'trip_in_progress' } : null);
             }
           }
@@ -180,21 +188,21 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
             });
             
             // Re-fetch booking or set state
-            setBooking(prev => prev ? { 
-              ...prev, 
+            const updatedBooking: Booking = { 
+              ...booking, 
               status: 'Active', 
               trip_status: initialTripStatus,
               started_at: new Date().toISOString(), 
               last_latitude: latitude, 
               last_longitude: longitude 
-            } : null);
+            };
+            
+            setBooking(updatedBooking);
+            bookingRef.current = updatedBooking;
             setTrackingActive(true);
             
             // Start periodic updates
-            startGPSWatch(booking.id, {
-              ...booking,
-              trip_status: initialTripStatus
-            });
+            startGPSWatch(booking.id, updatedBooking);
           } else {
             setError('Failed to update trip start in database.');
           }
@@ -217,17 +225,26 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   const handleOpenNavigation = () => {
     if (!booking) return;
 
-    // Default target coordinates fallback to textual address if lat/lng are missing
-    // Try to open with coordinates format if available, else standard text
-    let mapsUrl = '';
-    // Check if drop location exists or check search params or details
-    const dropLat = (booking as any).drop_latitude || (booking as any).pickup_latitude;
-    const dropLng = (booking as any).drop_longitude || (booking as any).pickup_longitude;
+    const isWorking = booking.trip_status === 'trip_in_progress';
+    let targetLat: number | null | undefined = null;
+    let targetLng: number | null | undefined = null;
+    let targetAddress = '';
 
-    if (dropLat && dropLng) {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${dropLat},${dropLng}`;
+    if (isWorking) {
+      targetLat = booking.drop_latitude;
+      targetLng = booking.drop_longitude;
+      targetAddress = booking.destination_location;
     } else {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.destination_location)}`;
+      targetLat = booking.pickup_latitude;
+      targetLng = booking.pickup_longitude;
+      targetAddress = booking.pickup_location;
+    }
+
+    let mapsUrl = '';
+    if (targetLat && targetLng) {
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}`;
+    } else {
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(targetAddress)}`;
     }
 
     console.log('[Navigation] Launching native Google Maps app via redirect:', mapsUrl);
@@ -285,6 +302,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   if (!booking) return null;
 
   const isCompleted = booking.status === 'Completed';
+  const isWorking = booking.trip_status === 'trip_in_progress';
 
   return (
     <div id="driver-workspace-container" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">
@@ -354,28 +372,63 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           <div className="space-y-4 border-b border-neutral-100 pb-5">
             <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Route Itinerary</h3>
             
-            {/* Pickup */}
-            <div className="flex gap-3">
+            {/* Pickup Location */}
+            <div className={`flex gap-3 p-3 rounded-2xl border transition-all duration-300 ${
+              !isWorking && booking.status !== 'Completed'
+                ? 'bg-emerald-50/50 border-emerald-200 ring-2 ring-emerald-500/5' 
+                : 'bg-neutral-50/50 border-neutral-150'
+            }`}>
               <div className="flex flex-col items-center">
-                <div className="w-6 h-6 bg-[#10B981]/10 border border-[#10B981]/30 rounded-full flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0">
-                  A
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 font-bold ${
+                  !isWorking && booking.status !== 'Completed'
+                    ? 'bg-[#10B981] text-white' 
+                    : 'bg-neutral-200 text-neutral-600'
+                }`}>
+                  {!isWorking && booking.status !== 'Completed' ? '🚩' : '✓'}
                 </div>
                 <div className="w-0.5 h-10 bg-dashed border-l-2 border-neutral-200 my-1 flex-grow" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-[#10B981] uppercase tracking-wider mb-0.5">Pickup Location</p>
-                <p className="text-xs font-medium text-neutral-800 leading-relaxed font-sans">{booking.pickup_location}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                    !isWorking && booking.status !== 'Completed' ? 'text-emerald-700' : 'text-neutral-400'
+                  }`}>Pickup Location (Point A)</p>
+                  {!isWorking && booking.status !== 'Completed' && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-emerald-100 text-emerald-800 animate-pulse">
+                      Active Target
+                    </span>
+                  )}
+                  {(isWorking || booking.status === 'Completed') && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-neutral-200 text-neutral-700">
+                      Arrived
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-neutral-800 leading-relaxed font-sans mt-0.5">{booking.pickup_location}</p>
               </div>
             </div>
 
             {/* Destination */}
-            <div className="flex gap-3">
+            <div className={`flex gap-3 p-3 rounded-2xl border transition-all duration-300 ${
+              isWorking 
+                ? 'bg-indigo-50/50 border-indigo-200 ring-2 ring-indigo-500/5' 
+                : 'bg-neutral-50/50 border-neutral-150'
+            }`}>
               <div className="w-6 h-6 bg-red-50 border border-red-200 rounded-full flex items-center justify-center text-red-600 font-bold text-xs shrink-0">
-                B
+                🏁
               </div>
               <div>
-                <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-0.5">Destination / Drop Location</p>
-                <p className="text-xs font-medium text-neutral-800 leading-relaxed font-sans">{booking.destination_location}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                    isWorking ? 'text-indigo-700' : 'text-neutral-400'
+                  }`}>Destination / Drop Location (Point B)</p>
+                  {isWorking && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-indigo-100 text-indigo-800 animate-pulse">
+                      Active Target
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-semibold text-neutral-800 leading-relaxed font-sans mt-0.5">{booking.destination_location}</p>
               </div>
             </div>
           </div>
@@ -433,7 +486,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
                   className="w-full py-4 bg-[#111827] hover:bg-[#1F2937] text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98]"
                 >
                   <Navigation className="w-4 h-4 fill-white animate-bounce" />
-                  Open Navigation
+                  {isWorking ? 'Navigate to Destination' : 'Navigate to Pickup'}
                 </button>
 
                 <button
