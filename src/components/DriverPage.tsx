@@ -243,22 +243,28 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     const dLat = currentCoords?.latitude || latestCoords.current?.latitude || booking.last_latitude;
     const dLng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude;
 
-    const destPart = (booking.drop_latitude && booking.drop_longitude) 
-      ? `${booking.drop_latitude},${booking.drop_longitude}` 
-      : encodeURIComponent(booking.destination_location);
-
-    const waypointPart = (booking.pickup_latitude && booking.pickup_longitude)
-      ? `${booking.pickup_latitude},${booking.pickup_longitude}`
-      : encodeURIComponent(booking.pickup_location);
+    // Decide what the next destination is: final destination if arrived at pickup, otherwise direct pickup spot.
+    const isHeadingToDestination = booking.trip_status === 'driver_arrived';
+    
+    let destPart = '';
+    if (isHeadingToDestination) {
+      destPart = (booking.drop_latitude && booking.drop_longitude)
+        ? `${booking.drop_latitude},${booking.drop_longitude}`
+        : encodeURIComponent(booking.destination_location);
+    } else {
+      destPart = (booking.pickup_latitude && booking.pickup_longitude)
+        ? `${booking.pickup_latitude},${booking.pickup_longitude}`
+        : encodeURIComponent(booking.pickup_location);
+    }
 
     let mapsUrl = '';
     if (dLat && dLng) {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${dLat},${dLng}&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${dLat},${dLng}&destination=${destPart}&travelmode=driving&dir_action=navigate`;
     } else {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destPart}&travelmode=driving&dir_action=navigate`;
     }
 
-    console.log('[Navigation] Launching Google Maps multi-stop navigation:', mapsUrl);
+    console.log('[Navigation] Launching Google Maps Turn-by-Turn Navigation to:', isHeadingToDestination ? 'drop' : 'pickup', mapsUrl);
     window.open(mapsUrl, '_system');
   };
 

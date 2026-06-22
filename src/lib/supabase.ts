@@ -710,7 +710,7 @@ export const SupabaseService = {
           console.warn('[Supabase Service warning] updateBookingCoords full schema error, retrying standard schema:', error);
           const standardPayload: any = { driver_latitude: lat, driver_longitude: lng };
           if (extra?.trip_status) {
-            standardPayload.status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+            standardPayload.status = extra.trip_status === 'completed' ? 'Completed' : extra.trip_status;
           }
           const { error: error2 } = await supabaseClient
             .from('inquiries')
@@ -928,7 +928,12 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
   let statusMapped: 'Pending' | 'Confirmed' | 'Active' | 'Completed' = 'Confirmed';
   if (rawStatus === 'Completed' || rawStatus === 'completed') {
     statusMapped = 'Completed';
-  } else if (rawStatus === 'Active' || rawStatus === 'driver_en_route' || rawStatus === 'trip_in_progress') {
+  } else if (
+    rawStatus === 'Active' || 
+    rawStatus === 'driver_en_route' || 
+    rawStatus === 'driver_arrived' || 
+    rawStatus === 'trip_in_progress'
+  ) {
     statusMapped = 'Active';
   } else if (rawStatus === 'Confirmed' || rawStatus === 'confirmed') {
     statusMapped = 'Confirmed';
@@ -939,7 +944,9 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
   // Derive trip status if not directly present in DB
   const derivedTripStatus = inq.trip_status || (
     rawStatus === 'Completed' || rawStatus === 'completed' ? 'completed' :
-    rawStatus === 'Active' || rawStatus === 'driver_en_route' || rawStatus === 'trip_in_progress' ? 'driver_en_route' :
+    rawStatus === 'driver_arrived' ? 'driver_arrived' :
+    rawStatus === 'trip_in_progress' ? 'trip_in_progress' :
+    rawStatus === 'driver_en_route' || rawStatus === 'Active' ? 'driver_en_route' :
     rawStatus === 'Confirmed' || rawStatus === 'confirmed' ? 'confirmed' : 'confirmed'
   );
 
