@@ -262,6 +262,36 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     window.open(mapsUrl, '_system');
   };
 
+  const handleArrivedAtPickup = async () => {
+    if (!booking) return;
+
+    setLoading(true);
+    try {
+      const lat = currentCoords?.latitude || latestCoords.current?.latitude || booking.last_latitude || booking.pickup_latitude || 0;
+      const lng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude || booking.pickup_longitude || 0;
+
+      const success = await SupabaseService.updateBookingCoords(booking.id, lat, lng, {
+        trip_status: 'driver_arrived'
+      });
+
+      if (success) {
+        const updatedBooking: Booking = { 
+          ...booking, 
+          trip_status: 'driver_arrived' 
+        };
+        setBooking(updatedBooking);
+        bookingRef.current = updatedBooking;
+      } else {
+        setError('Failed to update arrival status in database.');
+      }
+    } catch (err) {
+      console.error('Error setting arrived at pickup:', err);
+      setError('An error occurred while setting arrival status.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCompleteTrip = async () => {
     if (!booking) return;
 
@@ -500,16 +530,33 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
                   Open Google Maps Navigation
                 </button>
 
+                {booking.trip_status !== 'driver_arrived' && (
+                  <button
+                    onClick={handleArrivedAtPickup}
+                    disabled={loading}
+                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <MapPin className="w-4 h-4 text-white" />
+                        Arrived at Pickup
+                      </>
+                    )}
+                  </button>
+                )}
+
                 <button
                   onClick={handleCompleteTrip}
                   disabled={loading}
-                  className="w-full py-4 bg-neutral-200 hover:bg-neutral-300 text-neutral-800 rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md active:scale-[0.98] disabled:opacity-50"
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle className="w-4 h-4 text-white" />
                       Complete Trip
                     </>
                   )}

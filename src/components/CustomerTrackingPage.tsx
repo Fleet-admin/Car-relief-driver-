@@ -48,6 +48,10 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
   // Subscribe to real-time coordinate updates
   useEffect(() => {
     if (!booking) return;
+    if (booking.status === 'Completed') {
+      console.log('[CustomerTracking] Booking completed. Skipping/unsubscribing real-time updates.');
+      return;
+    }
 
     console.log('[CustomerTracking] Subscribing to Supabase Realtime updates for ID:', booking.id);
     const unsubscribe = SupabaseService.subscribeToBookingRealtime(booking.id, (updatedBooking) => {
@@ -56,13 +60,32 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
     });
 
     return () => {
+      console.log('[CustomerTracking] Cleaning up real-time updates subscription.');
       unsubscribe();
     };
-  }, [booking?.id]);
+  }, [booking?.id, booking?.status]);
+
+  // Handle map container unmount / layout cleanup
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        console.log('[Leaflet Map] Removing map instance on component unmount');
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle Leaflet Map Initialization and updates whenever coordinates or status change
   useEffect(() => {
     if (!booking || !mapContainerRef.current) return;
+    if (booking.status === 'Completed') {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      return;
+    }
 
     // Define custom marker icons using pure HTML/CSS to completely bypass typical bundler image issues
     const driverIcon = L.divIcon({
@@ -394,6 +417,61 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
   }
 
   const isCompleted = booking.status === 'Completed';
+
+  if (isCompleted) {
+    const bookingId = booking.id;
+    const pickupLocation = booking.pickup_location;
+    const dropLocation = booking.destination_location;
+    const completedTime = booking.completed_at 
+      ? new Date(booking.completed_at).toLocaleString() 
+      : new Date().toLocaleString();
+
+    return (
+      <div id="customer-trip-completed-panel" className="max-w-md mx-auto my-6 px-4 font-sans text-left">
+        <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden p-6 text-center space-y-6">
+          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-3xl">
+            ✅
+          </div>
+          
+          <div className="space-y-2">
+            <h1 className="text-xl font-extrabold text-neutral-900 tracking-tight">Trip Completed</h1>
+            <p className="text-sm text-neutral-600 leading-relaxed font-semibold">
+              Thank you for choosing Remix Car & Driver Relief Services.
+            </p>
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Your journey has been successfully completed.
+            </p>
+          </div>
+
+          <div className="border-t border-b border-neutral-100 py-4 space-y-4 text-left text-xs text-neutral-700">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">Booking ID:</span>
+              <p className="font-mono text-neutral-800 break-all font-semibold">{bookingId}</p>
+            </div>
+
+            <div>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">Pickup:</span>
+              <p className="font-semibold text-neutral-800">{pickupLocation}</p>
+            </div>
+
+            <div>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">Destination:</span>
+              <p className="font-semibold text-neutral-800">{dropLocation}</p>
+            </div>
+
+            <div>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">Completed At:</span>
+              <p className="font-semibold text-neutral-800">{completedTime}</p>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-neutral-400 font-medium">
+            Remix Car & Driver Relief Services • Secure Trip Session Closed
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="customer-live-tracking-panel" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">
