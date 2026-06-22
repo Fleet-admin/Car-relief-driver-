@@ -109,22 +109,24 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
         const { latitude, longitude, speed, heading } = latestCoords.current;
         console.log('[GPS Tracking] Uploading coordinates to database:', latitude, longitude);
         
-        let targetTripStatus: 'driver_en_route' | 'trip_in_progress' = 'driver_en_route';
+        let targetTripStatus: 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' = 'driver_en_route';
         
-        // If currentBooking or latest local booking state is trip_in_progress, keep it.
+        // If currentBooking or latest local booking state is trip_in_progress or driver_arrived, keep it.
         // Otherwise, run check to see if we reached pickup point.
         if (liveBooking.trip_status === 'trip_in_progress') {
           targetTripStatus = 'trip_in_progress';
+        } else if (liveBooking.trip_status === 'driver_arrived') {
+          targetTripStatus = 'driver_arrived';
         } else {
           const pLat = liveBooking.pickup_latitude;
           const pLng = liveBooking.pickup_longitude;
           if (pLat && pLng) {
             const distanceToPickup = getDistanceInMeters(latitude, longitude, pLat, pLng);
-            if (distanceToPickup <= 100) {
-              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 100m of pickup point. Setting trip_status to trip_in_progress.');
-              targetTripStatus = 'trip_in_progress';
-              liveBooking.trip_status = 'trip_in_progress';
-              setBooking(prev => prev ? { ...prev, trip_status: 'trip_in_progress' } : null);
+            if (distanceToPickup <= 50) {
+              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 50m of pickup point. Setting trip_status to driver_arrived.');
+              targetTripStatus = 'driver_arrived';
+              liveBooking.trip_status = 'driver_arrived';
+              setBooking(prev => prev ? { ...prev, trip_status: 'driver_arrived' } : null);
             }
           }
         }
@@ -171,12 +173,12 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           // Start trip in DB
           const success = await SupabaseService.startBookingTrip(booking.id);
           if (success) {
-            // Determine initial status: if already near pickup (<100m), set 'trip_in_progress', else 'driver_en_route'
-            let initialTripStatus: 'driver_en_route' | 'trip_in_progress' = 'driver_en_route';
+            // Determine initial status: if already near pickup (<50m), set 'driver_arrived', else 'driver_en_route'
+            let initialTripStatus: 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' = 'driver_en_route';
             if (booking.pickup_latitude && booking.pickup_longitude) {
               const distanceToPickup = getDistanceInMeters(latitude, longitude, booking.pickup_latitude, booking.pickup_longitude);
-              if (distanceToPickup <= 100) {
-                initialTripStatus = 'trip_in_progress';
+              if (distanceToPickup <= 50) {
+                initialTripStatus = 'driver_arrived';
               }
             }
 
@@ -225,12 +227,12 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   const handleOpenNavigation = () => {
     if (!booking) return;
 
-    const isWorking = booking.trip_status === 'trip_in_progress';
+    const isWorkingState = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
     let targetLat: number | null | undefined = null;
     let targetLng: number | null | undefined = null;
     let targetAddress = '';
 
-    if (isWorking) {
+    if (isWorkingState) {
       targetLat = booking.drop_latitude;
       targetLng = booking.drop_longitude;
       targetAddress = booking.destination_location;
@@ -302,7 +304,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   if (!booking) return null;
 
   const isCompleted = booking.status === 'Completed';
-  const isWorking = booking.trip_status === 'trip_in_progress';
+  const isWorking = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
 
   return (
     <div id="driver-workspace-container" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">

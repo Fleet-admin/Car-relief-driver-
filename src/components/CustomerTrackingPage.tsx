@@ -186,7 +186,7 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
       }
 
       const isEnRoute = !booking.trip_status || booking.trip_status === 'driver_en_route';
-      const isWorking = booking.trip_status === 'trip_in_progress';
+      const isWorking = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
 
       if (isEnRoute) {
         // Approach: Driver (🚗) → Pickup (📍) with dashed indigo line
@@ -339,14 +339,18 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
     etaValue = "Arrived";
     distanceValue = "Arrived";
   } else if (booking.status === 'Active') {
-    const isWorking = booking.trip_status === 'trip_in_progress';
-    if (isWorking) {
-      statusMessageHeader = "Trip in progress";
+    const isWorkingOrArrived = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
+    const isArrived = booking.trip_status === 'driver_arrived';
+    if (isWorkingOrArrived) {
+      statusMessageHeader = isArrived ? "Driver Arrived" : "Trip in progress";
       if (distanceToDestination !== null) {
         distanceValue = formatDistance(distanceToDestination);
         etaValue = calculateETA(distanceToDestination);
         
-        if (distanceToDestination <= 120) {
+        if (isArrived) {
+          proximityMessage = "Driver has arrived at your pickup location!";
+          proximityColor = "bg-emerald-100 text-emerald-900 border-emerald-350 animate-pulse font-semibold";
+        } else if (distanceToDestination <= 120) {
           proximityMessage = "Vehicle has arrived at your destination! (within 100m)";
           proximityColor = "bg-emerald-50 text-emerald-800 border-emerald-250 animate-pulse";
         } else if (distanceToDestination <= 550) {
@@ -404,7 +408,7 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
               'bg-amber-500/20 text-amber-400'
             }`}>
               {booking.status === 'Confirmed' ? 'Scheduled' :
-               booking.status === 'Active' ? 'En Route' :
+               booking.status === 'Active' ? (booking.trip_status === 'driver_arrived' ? 'Arrived' : 'En Route') :
                'Trip Completed'}
             </span>
           </div>
@@ -412,7 +416,11 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
           <p className="text-neutral-400 text-xs">
             Live Tracker: <strong className="text-indigo-300 font-bold">{
               booking.status === 'Confirmed' ? 'Waiting for driver to initiate trip...' :
-              booking.status === 'Active' ? (booking.trip_status === 'trip_in_progress' ? 'Trip in progress' : 'Driver en route to pickup...') :
+              booking.status === 'Active' ? (
+                booking.trip_status === 'trip_in_progress' ? 'Trip in progress' :
+                booking.trip_status === 'driver_arrived' ? 'Driver has arrived at pickup.' :
+                'Driver en route to pickup...'
+              ) :
               'Trip completed successfully.'
             }</strong>
           </p>

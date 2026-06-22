@@ -686,7 +686,7 @@ export const SupabaseService = {
     return matched ? mapInquiryRowToBooking(matched) : null;
   },
 
-  async updateBookingCoords(bookingId: string, lat: number, lng: number, extra?: { speed?: number; heading?: number; trip_status?: 'confirmed' | 'driver_en_route' | 'trip_in_progress' | 'completed' }): Promise<boolean> {
+  async updateBookingCoords(bookingId: string, lat: number, lng: number, extra?: { speed?: number; heading?: number; trip_status?: 'confirmed' | 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' | 'completed' }): Promise<boolean> {
     console.log('[Supabase Service] updateBookingCoords on inquiries:', bookingId, lat, lng, extra);
     if (supabaseClient) {
       try {
@@ -710,7 +710,7 @@ export const SupabaseService = {
           console.warn('[Supabase Service warning] updateBookingCoords full schema error, retrying standard schema:', error);
           const standardPayload: any = { driver_latitude: lat, driver_longitude: lng };
           if (extra?.trip_status) {
-            standardPayload.status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+            standardPayload.status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
           }
           const { error: error2 } = await supabaseClient
             .from('inquiries')
@@ -731,7 +731,7 @@ export const SupabaseService = {
       current[idx].last_location_update = new Date().toISOString();
       if (extra?.trip_status) {
         current[idx].trip_status = extra.trip_status;
-        current[idx].status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+        current[idx].status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
       }
       saveLocalInquiries([...current]);
       return true;
