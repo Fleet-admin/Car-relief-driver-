@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Booking } from '../types';
 import { SupabaseService } from '../lib/supabase';
-import { Play, MapPin, CheckCircle, Navigation, Phone, ExternalLink, Loader2, Shield } from 'lucide-react';
+import { Play, MapPin, CheckCircle, Navigation, Phone, ExternalLink, Loader2, Shield, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 
 // Import Leaflet CSS in case we render anything, but in Leaflet CSS standard is used in tracking
@@ -284,12 +284,16 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
 
   if (!booking) return null;
 
+  const isCompleted = booking.status === 'Completed';
+
   return (
     <div id="driver-workspace-container" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">
       {/* Driver Workspace Card */}
-      <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden text-left">
+      <div className={`rounded-3xl border border-neutral-200 shadow-xl overflow-hidden text-left flex flex-col transition-all duration-300 ${
+        isCompleted ? 'bg-neutral-50/90 border-neutral-300 ring-4 ring-neutral-950/5' : 'bg-white'
+      }`}>
         {/* Header Indicator */}
-        <div className="bg-neutral-900 text-white p-6 relative">
+        <div className={`p-6 relative text-white transition-colors duration-300 ${isCompleted ? 'bg-neutral-800' : 'bg-neutral-900'}`}>
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] uppercase font-bold tracking-widest text-[#10B981] bg-[#10B981]/15 px-2.5 py-1 rounded">
               Trip Workspace
@@ -308,24 +312,41 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           <p className="text-neutral-400 text-xs">Vehicle Assigned: <strong className="text-white text-sm ml-1 font-mono">{booking.vehicle_number}</strong></p>
         </div>
 
+        {/* completed banner state */}
+        {isCompleted && (
+          <div className="bg-[#10B981] text-white px-5 py-4 flex items-center gap-3 animate-fade-in border-b border-emerald-600">
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Check className="w-5 h-5 text-white stroke-[3px]" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold tracking-wider uppercase text-white leading-tight">TRIP COMPLETED</p>
+              <p className="text-[11px] font-medium text-emerald-100 mt-0.5">This trip has been completed successfully.</p>
+            </div>
+          </div>
+        )}
+
         {/* Client details info */}
         <div className="p-6 space-y-5">
           {/* Customer specifications container */}
-          <div className="border-b border-neutral-100 pb-5">
+          <div className="border-b border-neutral-150 pb-5">
             <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Client Details</h3>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-neutral-900 text-base">{booking.customer_name}</p>
-                <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1">
-                  <Phone className="w-3 h-3" /> {booking.customer_phone}
-                </p>
+                {!isCompleted && booking.customer_phone && (
+                  <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1">
+                    <Phone className="w-3 h-3" /> {booking.customer_phone}
+                  </p>
+                )}
               </div>
-              <a
-                href={`tel:${booking.customer_phone}`}
-                className="p-3 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 rounded-full transition flex items-center justify-center active:scale-95"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
+              {!isCompleted && booking.customer_phone && (
+                <a
+                  href={`tel:${booking.customer_phone}`}
+                  className="p-3 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 rounded-full transition flex items-center justify-center active:scale-95"
+                >
+                  <Phone className="w-4 h-4" />
+                </a>
+              )}
             </div>
           </div>
 

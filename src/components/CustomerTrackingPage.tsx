@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Booking } from '../types';
 import { SupabaseService } from '../lib/supabase';
-import { Shield, Phone, MapPin, Loader2, Navigation, Compass, Map } from 'lucide-react';
+import { Shield, Phone, MapPin, Loader2, Navigation, Compass, Map, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -383,12 +383,16 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
     }
   }
 
+  const isCompleted = booking.status === 'Completed';
+
   return (
     <div id="customer-live-tracking-panel" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">
       {/* Live Map Frame */}
-      <div className="bg-white rounded-3xl border border-neutral-200 shadow-xl overflow-hidden text-left flex flex-col">
+      <div className={`rounded-3xl border border-neutral-200 shadow-xl overflow-hidden text-left flex flex-col transition-all duration-300 ${
+        isCompleted ? 'bg-neutral-50/90 border-neutral-300 ring-4 ring-neutral-950/5' : 'bg-white'
+      }`}>
         {/* Header Summary Info */}
-        <div className="bg-neutral-900 text-white p-5">
+        <div className={`text-white p-5 transition-colors duration-300 ${isCompleted ? 'bg-neutral-800' : 'bg-neutral-900'}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full bg-emerald-400 ${booking.status === 'Active' ? 'animate-pulse' : ''}`} />
@@ -396,7 +400,7 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
             </div>
             <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider ${
               booking.status === 'Active' ? 'bg-[#10B981]/20 text-[#10B981]' :
-              booking.status === 'Completed' ? 'bg-indigo-500/20 text-indigo-400' :
+              booking.status === 'Completed' ? 'bg-neutral-600 text-neutral-200' :
               'bg-amber-500/20 text-amber-400'
             }`}>
               {booking.status === 'Confirmed' ? 'Scheduled' :
@@ -413,6 +417,19 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
             }</strong>
           </p>
         </div>
+
+        {/* completed banner state */}
+        {isCompleted && (
+          <div className="bg-[#10B981] text-white px-5 py-4 flex items-center gap-3 animate-fade-in border-b border-emerald-600">
+            <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Check className="w-5 h-5 text-white stroke-[3px]" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold tracking-wider uppercase text-white leading-tight">TRIP COMPLETED</p>
+              <p className="text-[11px] font-medium text-emerald-100 mt-0.5">This trip has been completed successfully.</p>
+            </div>
+          </div>
+        )}
 
         {/* The Map Section */}
         <div className="relative">
@@ -459,7 +476,7 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
               </p>
             </div>
             
-            {booking.driver_phone && (
+            {!isCompleted && booking.driver_phone && (
               <a
                 href={`tel:${booking.driver_phone}`}
                 className="p-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-full transition flex items-center justify-center active:scale-95 border border-neutral-200"
