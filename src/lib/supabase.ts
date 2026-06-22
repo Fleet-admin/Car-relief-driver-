@@ -693,12 +693,13 @@ export const SupabaseService = {
         const updatePayload: any = { 
           driver_latitude: lat, 
           driver_longitude: lng,
-          current_driver_latitude: lat,
-          current_driver_longitude: lng,
           last_location_update: new Date().toISOString()
         };
         if (extra?.trip_status) {
           updatePayload.trip_status = extra.trip_status;
+          updatePayload.status = (extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress')
+            ? 'Active'
+            : (extra.trip_status === 'completed' ? 'Completed' : 'Confirmed');
         }
 
         const { error } = await supabaseClient
@@ -710,7 +711,9 @@ export const SupabaseService = {
           console.warn('[Supabase Service warning] updateBookingCoords full schema error, retrying standard schema:', error);
           const standardPayload: any = { driver_latitude: lat, driver_longitude: lng };
           if (extra?.trip_status) {
-            standardPayload.status = extra.trip_status === 'completed' ? 'Completed' : extra.trip_status;
+            standardPayload.status = (extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress')
+              ? 'Active'
+              : (extra.trip_status === 'completed' ? 'Completed' : 'Confirmed');
           }
           const { error: error2 } = await supabaseClient
             .from('inquiries')
