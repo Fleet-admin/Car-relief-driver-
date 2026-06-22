@@ -205,6 +205,19 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
             
             // Start periodic updates
             startGPSWatch(booking.id, updatedBooking);
+
+            // Auto-open Google Maps directions route with Multi-stop (Origin -> Pickup -> Destination)
+            const destPart = (updatedBooking.drop_latitude && updatedBooking.drop_longitude) 
+              ? `${updatedBooking.drop_latitude},${updatedBooking.drop_longitude}` 
+              : encodeURIComponent(updatedBooking.destination_location);
+
+            const waypointPart = (updatedBooking.pickup_latitude && updatedBooking.pickup_longitude)
+              ? `${updatedBooking.pickup_latitude},${updatedBooking.pickup_longitude}`
+              : encodeURIComponent(updatedBooking.pickup_location);
+
+            const travelRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
+            console.log('[GPS Start Session] Auto-opening multi-stop navigation route:', travelRouteUrl);
+            window.open(travelRouteUrl, '_system');
           } else {
             setError('Failed to update trip start in database.');
           }
@@ -227,30 +240,26 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   const handleOpenNavigation = () => {
     if (!booking) return;
 
-    const isWorkingState = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
-    let targetLat: number | null | undefined = null;
-    let targetLng: number | null | undefined = null;
-    let targetAddress = '';
+    const dLat = currentCoords?.latitude || latestCoords.current?.latitude || booking.last_latitude;
+    const dLng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude;
 
-    if (isWorkingState) {
-      targetLat = booking.drop_latitude;
-      targetLng = booking.drop_longitude;
-      targetAddress = booking.destination_location;
-    } else {
-      targetLat = booking.pickup_latitude;
-      targetLng = booking.pickup_longitude;
-      targetAddress = booking.pickup_location;
-    }
+    const destPart = (booking.drop_latitude && booking.drop_longitude) 
+      ? `${booking.drop_latitude},${booking.drop_longitude}` 
+      : encodeURIComponent(booking.destination_location);
+
+    const waypointPart = (booking.pickup_latitude && booking.pickup_longitude)
+      ? `${booking.pickup_latitude},${booking.pickup_longitude}`
+      : encodeURIComponent(booking.pickup_location);
 
     let mapsUrl = '';
-    if (targetLat && targetLng) {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}`;
+    if (dLat && dLng) {
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${dLat},${dLng}&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
     } else {
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(targetAddress)}`;
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
     }
 
-    console.log('[Navigation] Launching native Google Maps app via redirect:', mapsUrl);
-    window.open(mapsUrl, '_system'); // _system or _blank opens native maps
+    console.log('[Navigation] Launching Google Maps multi-stop navigation:', mapsUrl);
+    window.open(mapsUrl, '_system');
   };
 
   const handleCompleteTrip = async () => {
@@ -488,7 +497,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
                   className="w-full py-4 bg-[#111827] hover:bg-[#1F2937] text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98]"
                 >
                   <Navigation className="w-4 h-4 fill-white animate-bounce" />
-                  {isWorking ? 'Navigate to Destination' : 'Navigate to Pickup'}
+                  Open Google Maps Navigation
                 </button>
 
                 <button
