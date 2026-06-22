@@ -686,7 +686,7 @@ export const SupabaseService = {
     return matched ? mapInquiryRowToBooking(matched) : null;
   },
 
-  async updateBookingCoords(bookingId: string, lat: number, lng: number, extra?: { speed?: number; heading?: number; trip_status?: 'confirmed' | 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' | 'completed' }): Promise<boolean> {
+  async updateBookingCoords(bookingId: string, lat: number, lng: number, extra?: { speed?: number; heading?: number; trip_status?: 'confirmed' | 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' | 'completed' | 'en_route_pickup' | 'arrived_pickup' | 'trip_started' | 'trip_completed' }): Promise<boolean> {
     console.log('[Supabase Service] updateBookingCoords on inquiries:', bookingId, lat, lng, extra);
     if (supabaseClient) {
       try {
@@ -697,9 +697,15 @@ export const SupabaseService = {
         };
         if (extra?.trip_status) {
           updatePayload.trip_status = extra.trip_status;
-          updatePayload.status = (extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress')
-            ? 'Active'
-            : (extra.trip_status === 'completed' ? 'Completed' : 'Confirmed');
+          const isActive = (
+            extra.trip_status === 'driver_en_route' || 
+            extra.trip_status === 'driver_arrived' || 
+            extra.trip_status === 'trip_in_progress' ||
+            extra.trip_status === 'en_route_pickup' ||
+            extra.trip_status === 'arrived_pickup' ||
+            extra.trip_status === 'trip_started'
+          );
+          updatePayload.status = isActive ? 'Active' : (extra.trip_status === 'completed' || extra.trip_status === 'trip_completed' ? 'Completed' : 'Confirmed');
         }
 
         const { error } = await supabaseClient
@@ -711,9 +717,15 @@ export const SupabaseService = {
           console.warn('[Supabase Service warning] updateBookingCoords full schema error, retrying standard schema:', error);
           const standardPayload: any = { driver_latitude: lat, driver_longitude: lng };
           if (extra?.trip_status) {
-            standardPayload.status = (extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress')
-              ? 'Active'
-              : (extra.trip_status === 'completed' ? 'Completed' : 'Confirmed');
+            const isActive = (
+              extra.trip_status === 'driver_en_route' || 
+              extra.trip_status === 'driver_arrived' || 
+              extra.trip_status === 'trip_in_progress' ||
+              extra.trip_status === 'en_route_pickup' ||
+              extra.trip_status === 'arrived_pickup' ||
+              extra.trip_status === 'trip_started'
+            );
+            standardPayload.status = isActive ? 'Active' : (extra.trip_status === 'completed' || extra.trip_status === 'trip_completed' ? 'Completed' : 'Confirmed');
           }
           const { error: error2 } = await supabaseClient
             .from('inquiries')
@@ -734,7 +746,15 @@ export const SupabaseService = {
       current[idx].last_location_update = new Date().toISOString();
       if (extra?.trip_status) {
         current[idx].trip_status = extra.trip_status;
-        current[idx].status = extra.trip_status === 'driver_en_route' || extra.trip_status === 'driver_arrived' || extra.trip_status === 'trip_in_progress' ? 'Active' : extra.trip_status === 'completed' ? 'Completed' : 'Confirmed';
+        const isActive = (
+          extra.trip_status === 'driver_en_route' || 
+          extra.trip_status === 'driver_arrived' || 
+          extra.trip_status === 'trip_in_progress' ||
+          extra.trip_status === 'en_route_pickup' ||
+          extra.trip_status === 'arrived_pickup' ||
+          extra.trip_status === 'trip_started'
+        );
+        current[idx].status = isActive ? 'Active' : (extra.trip_status === 'completed' || extra.trip_status === 'trip_completed' ? 'Completed' : 'Confirmed');
       }
       saveLocalInquiries([...current]);
       return true;
@@ -751,7 +771,7 @@ export const SupabaseService = {
           .from('inquiries')
           .update({ 
             status: 'Active', 
-            trip_status: 'driver_en_route',
+            trip_status: 'en_route_pickup',
             trip_started_at: timestamp 
           })
           .eq('id', bookingId);
@@ -773,7 +793,7 @@ export const SupabaseService = {
     const idx = current.findIndex(b => b.id === bookingId);
     if (idx !== -1) {
       current[idx].status = 'Active';
-      current[idx].trip_status = 'driver_en_route';
+      current[idx].trip_status = 'en_route_pickup';
       current[idx].trip_started_at = timestamp;
       saveLocalInquiries([...current]);
       return true;
@@ -790,7 +810,7 @@ export const SupabaseService = {
           .from('inquiries')
           .update({ 
             status: 'Completed', 
-            trip_status: 'completed',
+            trip_status: 'trip_completed',
             trip_completed_at: timestamp 
           })
           .eq('id', bookingId);
@@ -812,7 +832,7 @@ export const SupabaseService = {
     const idx = current.findIndex(b => b.id === bookingId);
     if (idx !== -1) {
       current[idx].status = 'Completed';
-      current[idx].trip_status = 'completed';
+      current[idx].trip_status = 'trip_completed';
       current[idx].trip_completed_at = timestamp;
       saveLocalInquiries([...current]);
       return true;
@@ -929,13 +949,16 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
   
   const rawStatus = inq.status;
   let statusMapped: 'Pending' | 'Confirmed' | 'Active' | 'Completed' = 'Confirmed';
-  if (rawStatus === 'Completed' || rawStatus === 'completed') {
+  if (rawStatus === 'Completed' || rawStatus === 'completed' || rawStatus === 'trip_completed') {
     statusMapped = 'Completed';
   } else if (
     rawStatus === 'Active' || 
     rawStatus === 'driver_en_route' || 
     rawStatus === 'driver_arrived' || 
-    rawStatus === 'trip_in_progress'
+    rawStatus === 'trip_in_progress' ||
+    rawStatus === 'en_route_pickup' ||
+    rawStatus === 'arrived_pickup' ||
+    rawStatus === 'trip_started'
   ) {
     statusMapped = 'Active';
   } else if (rawStatus === 'Confirmed' || rawStatus === 'confirmed') {
@@ -945,13 +968,19 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
   }
 
   // Derive trip status if not directly present in DB
-  const derivedTripStatus = inq.trip_status || (
-    rawStatus === 'Completed' || rawStatus === 'completed' ? 'completed' :
-    rawStatus === 'driver_arrived' ? 'driver_arrived' :
-    rawStatus === 'trip_in_progress' ? 'trip_in_progress' :
-    rawStatus === 'driver_en_route' || rawStatus === 'Active' ? 'driver_en_route' :
+  let derivedTripStatus = inq.trip_status || (
+    rawStatus === 'Completed' || rawStatus === 'completed' || rawStatus === 'trip_completed' ? 'trip_completed' :
+    rawStatus === 'driver_arrived' || rawStatus === 'arrived_pickup' ? 'arrived_pickup' :
+    rawStatus === 'trip_in_progress' || rawStatus === 'trip_started' ? 'trip_started' :
+    rawStatus === 'driver_en_route' || rawStatus === 'en_route_pickup' || rawStatus === 'Active' ? 'en_route_pickup' :
     rawStatus === 'Confirmed' || rawStatus === 'confirmed' ? 'confirmed' : 'confirmed'
   );
+
+  // Coerce old states to official ones to guarantee uniformity throughout the app:
+  if (derivedTripStatus === 'driver_en_route') derivedTripStatus = 'en_route_pickup';
+  if (derivedTripStatus === 'driver_arrived') derivedTripStatus = 'arrived_pickup';
+  if (derivedTripStatus === 'trip_in_progress') derivedTripStatus = 'trip_started';
+  if (derivedTripStatus === 'completed') derivedTripStatus = 'trip_completed';
 
   return {
     id: inq.id,

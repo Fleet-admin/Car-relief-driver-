@@ -109,24 +109,26 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
         const { latitude, longitude, speed, heading } = latestCoords.current;
         console.log('[GPS Tracking] Uploading coordinates to database:', latitude, longitude);
         
-        let targetTripStatus: 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' = 'driver_en_route';
+        let targetTripStatus: 'en_route_pickup' | 'arrived_pickup' | 'trip_started' | 'trip_completed' = 'en_route_pickup';
         
-        // If currentBooking or latest local booking state is trip_in_progress or driver_arrived, keep it.
+        // If currentBooking or latest local booking state is trip_started or arrived_pickup, keep it.
         // Otherwise, run check to see if we reached pickup point.
-        if (liveBooking.trip_status === 'trip_in_progress') {
-          targetTripStatus = 'trip_in_progress';
-        } else if (liveBooking.trip_status === 'driver_arrived') {
-          targetTripStatus = 'driver_arrived';
+        if (liveBooking.trip_status === 'trip_started') {
+          targetTripStatus = 'trip_started';
+        } else if (liveBooking.trip_status === 'arrived_pickup') {
+          targetTripStatus = 'arrived_pickup';
+        } else if (liveBooking.trip_status === 'trip_completed') {
+          targetTripStatus = 'trip_completed';
         } else {
           const pLat = liveBooking.pickup_latitude;
           const pLng = liveBooking.pickup_longitude;
           if (pLat && pLng) {
             const distanceToPickup = getDistanceInMeters(latitude, longitude, pLat, pLng);
             if (distanceToPickup <= 10) {
-              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 10m of pickup point. Setting trip_status to driver_arrived.');
-              targetTripStatus = 'driver_arrived';
-              liveBooking.trip_status = 'driver_arrived';
-              setBooking(prev => prev ? { ...prev, trip_status: 'driver_arrived' } : null);
+              console.log('[GPS GPS Threshold] Auto-sensing: Vehicle inside 10m of pickup point. Setting trip_status to arrived_pickup.');
+              targetTripStatus = 'arrived_pickup';
+              liveBooking.trip_status = 'arrived_pickup';
+              setBooking(prev => prev ? { ...prev, trip_status: 'arrived_pickup' } : null);
             }
           }
         }
@@ -170,15 +172,15 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
           latestCoords.current = { latitude, longitude, speed, heading };
           setCurrentCoords({ latitude, longitude });
 
-          // Start trip in DB
+          // Start trip in DB (sets status: Active and trip_status: en_route_pickup)
           const success = await SupabaseService.startBookingTrip(booking.id);
           if (success) {
-            // Determine initial status: if already near pickup (<10m), set 'driver_arrived', else 'driver_en_route'
-            let initialTripStatus: 'driver_en_route' | 'driver_arrived' | 'trip_in_progress' = 'driver_en_route';
+            // Determine initial status: if already near pickup (<10m), set 'arrived_pickup', else 'en_route_pickup'
+            let initialTripStatus: 'en_route_pickup' | 'arrived_pickup' = 'en_route_pickup';
             if (booking.pickup_latitude && booking.pickup_longitude) {
               const distanceToPickup = getDistanceInMeters(latitude, longitude, booking.pickup_latitude, booking.pickup_longitude);
               if (distanceToPickup <= 10) {
-                initialTripStatus = 'driver_arrived';
+                initialTripStatus = 'arrived_pickup';
               }
             }
 
@@ -206,17 +208,13 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
             // Start periodic updates
             startGPSWatch(booking.id, updatedBooking);
 
-            // Auto-open Google Maps directions route with Multi-stop (Origin -> Pickup -> Destination)
-            const destPart = (updatedBooking.drop_latitude && updatedBooking.drop_longitude) 
-              ? `${updatedBooking.drop_latitude},${updatedBooking.drop_longitude}` 
-              : encodeURIComponent(updatedBooking.destination_location);
-
-            const waypointPart = (updatedBooking.pickup_latitude && updatedBooking.pickup_longitude)
+            // Auto-open Google Maps turn-by-turn navigation directly to Pickup Location
+            const pickupPart = (updatedBooking.pickup_latitude && updatedBooking.pickup_longitude)
               ? `${updatedBooking.pickup_latitude},${updatedBooking.pickup_longitude}`
               : encodeURIComponent(updatedBooking.pickup_location);
 
-            const travelRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${destPart}&waypoints=${waypointPart}&travelmode=driving`;
-            console.log('[GPS Start Session] Auto-opening multi-stop navigation route:', travelRouteUrl);
+            const travelRouteUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${pickupPart}&travelmode=driving&dir_action=navigate`;
+            console.log('[GPS Start Session] Auto-opening turn-by-turn navigation to pickup location:', travelRouteUrl);
             window.open(travelRouteUrl, '_system');
           } else {
             setError('Failed to update trip start in database.');
@@ -243,8 +241,8 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     const dLat = currentCoords?.latitude || latestCoords.current?.latitude || booking.last_latitude;
     const dLng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude;
 
-    // Decide what the next destination is: final destination if arrived at pickup, otherwise direct pickup spot.
-    const isHeadingToDestination = booking.trip_status === 'driver_arrived';
+    // Decide what the next destination is: final destination if arrived at pickup or trip started, otherwise direct pickup spot.
+    const isHeadingToDestination = booking.trip_status === 'arrived_pickup' || booking.trip_status === 'trip_started';
     
     let destPart = '';
     if (isHeadingToDestination) {
@@ -277,13 +275,13 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
       const lng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude || booking.pickup_longitude || 0;
 
       const success = await SupabaseService.updateBookingCoords(booking.id, lat, lng, {
-        trip_status: 'driver_arrived'
+        trip_status: 'arrived_pickup'
       });
 
       if (success) {
         const updatedBooking: Booking = { 
           ...booking, 
-          trip_status: 'driver_arrived' 
+          trip_status: 'arrived_pickup' 
         };
         setBooking(updatedBooking);
         bookingRef.current = updatedBooking;
@@ -298,6 +296,52 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
     }
   };
 
+  const handleNavigateToDestination = async () => {
+    if (!booking) return;
+
+    setLoading(true);
+    try {
+      const lat = currentCoords?.latitude || latestCoords.current?.latitude || booking.last_latitude || booking.pickup_latitude || 0;
+      const lng = currentCoords?.longitude || latestCoords.current?.longitude || booking.last_longitude || booking.pickup_longitude || 0;
+
+      // Update Database and trigger Trip Started phase
+      const success = await SupabaseService.updateBookingCoords(booking.id, lat, lng, {
+        trip_status: 'trip_started'
+      });
+
+      if (success) {
+        const updatedBooking: Booking = { 
+          ...booking, 
+          trip_status: 'trip_started' 
+        };
+        setBooking(updatedBooking);
+        bookingRef.current = updatedBooking;
+
+        // Automatically launch turn-by-turn navigation to Destination Drop-off Location
+        const destPart = (booking.drop_latitude && booking.drop_longitude)
+          ? `${booking.drop_latitude},${booking.drop_longitude}`
+          : encodeURIComponent(booking.destination_location);
+
+        let mapsUrl = '';
+        if (lat && lng) {
+          mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${destPart}&travelmode=driving&dir_action=navigate`;
+        } else {
+          mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destPart}&travelmode=driving&dir_action=navigate`;
+        }
+
+        console.log('[Navigation] Launching Google Maps Turn-by-Turn Navigation to destination:', mapsUrl);
+        window.open(mapsUrl, '_system');
+      } else {
+        setError('Failed to update trip progress in database.');
+      }
+    } catch (err) {
+      console.error('Error in handleNavigateToDestination:', err);
+      setError('An error occurred while setting trip started or opening maps.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCompleteTrip = async () => {
     if (!booking) return;
 
@@ -307,7 +351,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
       if (success) {
         stopGPSWatch();
         setTrackingActive(false);
-        setBooking(prev => prev ? { ...prev, status: 'Completed', completed_at: new Date().toISOString() } : null);
+        setBooking(prev => prev ? { ...prev, status: 'Completed', trip_status: 'trip_completed', completed_at: new Date().toISOString() } : null);
       } else {
         setError('Failed to update trip completion in database.');
       }
@@ -349,7 +393,7 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   if (!booking) return null;
 
   const isCompleted = booking.status === 'Completed';
-  const isWorking = booking.trip_status === 'trip_in_progress' || booking.trip_status === 'driver_arrived';
+  const isWorking = booking.trip_status === 'trip_started' || booking.trip_status === 'arrived_pickup';
 
   return (
     <div id="driver-workspace-container" className="max-w-md mx-auto my-4 pb-12 font-sans px-4">
@@ -528,45 +572,79 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
 
             {booking.status === 'Active' && (
               <div className="space-y-3">
-                <button
-                  onClick={handleOpenNavigation}
-                  className="w-full py-4 bg-[#111827] hover:bg-[#1F2937] text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98]"
-                >
-                  <Navigation className="w-4 h-4 fill-white animate-bounce" />
-                  Open Google Maps Navigation
-                </button>
+                {/* 1. If en_route_pickup status: show Open Navigation + Arrived at Pickup */}
+                {booking.trip_status === 'en_route_pickup' && (
+                  <>
+                    <button
+                      onClick={handleOpenNavigation}
+                      className="w-full py-4 bg-[#111827] hover:bg-[#1F2937] text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98]"
+                    >
+                      <Navigation className="w-4 h-4 fill-white animate-bounce" />
+                      Open Google Maps Navigation
+                    </button>
 
-                {booking.trip_status !== 'driver_arrived' && (
+                    <button
+                      onClick={handleArrivedAtPickup}
+                      disabled={loading}
+                      className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <MapPin className="w-4 h-4 text-white" />
+                          Arrived at Pickup
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+
+                {/* 2. If arrived_pickup status: show Navigate to Destination (one click to maps and trip_started!) */}
+                {booking.trip_status === 'arrived_pickup' && (
                   <button
-                    onClick={handleArrivedAtPickup}
+                    onClick={handleNavigateToDestination}
                     disabled={loading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
+                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
                   >
                     {loading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <>
-                        <MapPin className="w-4 h-4 text-white" />
-                        Arrived at Pickup
+                        <Navigation className="w-4 h-4 fill-white animate-pulse" />
+                        Navigate to Destination
                       </>
                     )}
                   </button>
                 )}
 
-                <button
-                  onClick={handleCompleteTrip}
-                  disabled={loading}
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
-                >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 text-white" />
-                      Complete Trip
-                    </>
-                  )}
-                </button>
+                {/* 3. If trip_started status: show Re-open Navigation + Complete Trip */}
+                {booking.trip_status === 'trip_started' && (
+                  <>
+                    <button
+                      onClick={handleOpenNavigation}
+                      className="w-full py-3 bg-[#111827]/80 hover:bg-[#111827] text-white rounded-2xl text-xs font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
+                    >
+                      <Navigation className="w-3.5 h-3.5 fill-white" />
+                      Re-open Destination Navigation
+                    </button>
+
+                    <button
+                      onClick={handleCompleteTrip}
+                      disabled={loading}
+                      className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-sm font-bold tracking-wide uppercase transition duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-white" />
+                          Complete Trip
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
