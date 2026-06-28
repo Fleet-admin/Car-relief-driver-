@@ -4,7 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Inquiry, InquiryStatus, ServiceType, VehicleCategory, Booking } from '../types';
+import { Inquiry, InquiryStatus, ServiceType, VehicleCategory, Booking, Driver, Vehicle, GeneralSettings } from '../types';
 
 // Read configuration from environment variables
 const getSupabaseConfig = () => {
@@ -893,9 +893,11 @@ export const SupabaseService = {
     vehicleNumber: string,
     driverToken: string,
     trackingToken: string,
-    additionalRequirements?: string | null
+    additionalRequirements?: string | null,
+    driverId?: string | null,
+    vehicleId?: string | null
   ): Promise<Inquiry | null> {
-    console.log('[Supabase Service] confirmInquiry:', id);
+    console.log('[Supabase Service] confirmInquiry:', id, { driverId, vehicleId });
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient
@@ -907,15 +909,32 @@ export const SupabaseService = {
             vehicle_number: vehicleNumber,
             driver_token: driverToken,
             tracking_token: trackingToken,
-            additional_requirements: additionalRequirements
+            additional_requirements: additionalRequirements,
+            driver_id: driverId || null,
+            vehicle_id: vehicleId || null
           })
           .eq('id', id)
           .select()
           .maybeSingle();
 
         if (error) {
-          console.error('[Supabase Service error] confirmInquiry database error:', error);
-          throw error;
+          console.warn('[Supabase Service warning] confirmInquiry full schema failed, retrying without driver_id/vehicle_id columns:', error);
+          const { data: fallbackData, error: fallbackError } = await supabaseClient
+            .from('inquiries')
+            .update({
+              status: 'Confirmed',
+              driver_name: driverName,
+              driver_phone: driverPhone,
+              vehicle_number: vehicleNumber,
+              driver_token: driverToken,
+              tracking_token: trackingToken,
+              additional_requirements: additionalRequirements
+            })
+            .eq('id', id)
+            .select()
+            .maybeSingle();
+          if (fallbackError) throw fallbackError;
+          return fallbackData as Inquiry;
         }
         return data as Inquiry;
       } catch (err) {
@@ -934,12 +953,163 @@ export const SupabaseService = {
         vehicle_number: vehicleNumber,
         driver_token: driverToken,
         tracking_token: trackingToken,
-        additional_requirements: additionalRequirements || currentList[index].additional_requirements
+        additional_requirements: additionalRequirements || currentList[index].additional_requirements,
+        driver_id: driverId || null,
+        vehicle_id: vehicleId || null
       };
       saveLocalInquiries([...currentList]);
       return currentList[index];
     }
     return null;
+  },
+
+  // --- Drivers Management ---
+  async getDrivers(): Promise<Driver[]> {
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('drivers')
+          .select('*')
+          .order('name', { ascending: true });
+        if (!error && data) {
+          return data as Driver[];
+        }
+        if (error) {
+          console.warn('[Supabase Service warning] Error querying drivers table:', error);
+        }
+      } catch (err) {
+        console.warn('[Supabase Service warning] Exception querying drivers table:', err);
+      }
+    }
+    const stored = localStorage.getItem('fleet_drivers');
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  async saveDrivers(drivers: Driver[]): Promise<{ success: boolean; error?: string }> {
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('drivers')
+          .upsert(drivers, { onConflict: 'id' });
+        if (!error) {
+          console.log('[Supabase Service success] Drivers saved successfully to DB.');
+        } else {
+          console.warn('[Supabase Service warning] Drivers upsert error, trying to write clean records:', error);
+        }
+      } catch (err: any) {
+        console.warn('[Supabase Service warning] Drivers exception during DB write:', err);
+      }
+    }
+    try {
+      localStorage.setItem('fleet_drivers', JSON.stringify(drivers));
+      window.dispatchEvent(new CustomEvent('supabase-drivers-updated', { detail: drivers }));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  // --- Vehicles Management ---
+  async getVehicles(): Promise<Vehicle[]> {
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('vehicles')
+          .select('*')
+          .order('vehicle_number', { ascending: true });
+        if (!error && data) {
+          return data as Vehicle[];
+        }
+        if (error) {
+          console.warn('[Supabase Service warning] Error querying vehicles table:', error);
+        }
+      } catch (err) {
+        console.warn('[Supabase Service warning] Exception querying vehicles table:', err);
+      }
+    }
+    const stored = localStorage.getItem('fleet_vehicles');
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  async saveVehicles(vehicles: Vehicle[]): Promise<{ success: boolean; error?: string }> {
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('vehicles')
+          .upsert(vehicles, { onConflict: 'id' });
+        if (!error) {
+          console.log('[Supabase Service success] Vehicles saved successfully to DB.');
+        } else {
+          console.warn('[Supabase Service warning] Vehicles upsert error:', error);
+        }
+      } catch (err: any) {
+        console.warn('[Supabase Service warning] Vehicles exception during DB write:', err);
+      }
+    }
+    try {
+      localStorage.setItem('fleet_vehicles', JSON.stringify(vehicles));
+      window.dispatchEvent(new CustomEvent('supabase-vehicles-updated', { detail: vehicles }));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  // --- Settings Management ---
+  async getSettings(): Promise<GeneralSettings> {
+    const defaults: GeneralSettings = {
+      company_name: 'Car & Driver Relief Services',
+      company_logo: '',
+      contact_number: '8637323873',
+      email_address: 'bappa.admin@gmail.com',
+      office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+      timezone: 'Asia/Kolkata'
+    };
+    if (supabaseClient) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('settings')
+          .select('value')
+          .eq('key', 'general_settings')
+          .maybeSingle();
+        if (!error && data && data.value) {
+          const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+          return { ...defaults, ...parsed };
+        }
+      } catch (err) {
+        console.warn('[Supabase Service warning] Exception getting settings:', err);
+      }
+    }
+    const stored = localStorage.getItem('general_settings');
+    return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+  },
+
+  async saveSettings(settings: GeneralSettings): Promise<{ success: boolean; error?: string }> {
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('settings')
+          .upsert({
+            key: 'general_settings',
+            value: settings,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' });
+        if (!error) {
+          console.log('[Supabase Service success] Settings saved successfully to DB.');
+        } else {
+          console.warn('[Supabase Service warning] Settings upsert error:', error);
+        }
+      } catch (err: any) {
+        console.warn('[Supabase Service warning] Settings exception:', err);
+      }
+    }
+    try {
+      localStorage.setItem('general_settings', JSON.stringify(settings));
+      window.dispatchEvent(new CustomEvent('supabase-settings-updated', { detail: settings }));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
   }
 };
 
@@ -996,6 +1166,8 @@ export function mapInquiryRowToBooking(inq: any): Booking | null {
     driver_name: inq.driver_name || null,
     driver_phone: inq.driver_phone || null,
     vehicle_number: inq.vehicle_number || null,
+    driver_id: inq.driver_id || null,
+    vehicle_id: inq.vehicle_id || null,
     driver_token: inq.driver_token || null,
     tracking_token: inq.tracking_token || null,
     started_at: inq.trip_started_at || null,

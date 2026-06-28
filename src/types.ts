@@ -36,6 +36,8 @@ export interface Inquiry {
   driver_name?: string | null;
   driver_phone?: string | null;
   vehicle_number?: string | null;
+  driver_id?: string | null;
+  vehicle_id?: string | null;
   driver_token?: string | null;
   tracking_token?: string | null;
   trip_started_at?: string | null;
@@ -87,6 +89,8 @@ export interface Booking {
   driver_name: string | null;
   driver_phone: string | null;
   vehicle_number: string | null;
+  driver_id?: string | null;
+  vehicle_id?: string | null;
   driver_token: string | null;
   tracking_token: string | null;
   started_at: string | null;
@@ -98,4 +102,34 @@ export interface Booking {
   drop_latitude?: number | null;
   drop_longitude?: number | null;
   created_at: string;
+}
+
+export interface Driver {
+  id: string;
+  name: string;
+  phone: string;
+  photo?: string | null;
+  status: 'Active' | 'Inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Vehicle {
+  id: string;
+  vehicle_number: string;
+  category_id: string; // References VehicleCategory id or name
+  vehicle_model?: string | null;
+  photo?: string | null;
+  status: 'Active' | 'Inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GeneralSettings {
+  company_name: string;
+  company_logo?: string | null;
+  contact_number: string;
+  email_address: string;
+  office_address: string;
+  timezone: string;
 }

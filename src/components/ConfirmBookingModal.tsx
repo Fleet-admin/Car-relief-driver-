@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Inquiry, Booking } from '../types';
+import { Inquiry, Booking, Driver, Vehicle } from '../types';
 import { SupabaseService, mapInquiryRowToBooking } from '../lib/supabase';
 import { X, User, Phone, Car, MessageSquare, CheckCircle, Loader2, Link2, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -17,6 +17,17 @@ export default function ConfirmBookingModal({ inquiry, onClose, onConfirmComplet
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [bookingTime, setBookingTime] = useState('12:00 PM');
   
+  // Entity loading and dropdown state
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loadingEntities, setLoadingEntities] = useState(true);
+  const [driverSearch, setDriverSearch] = useState('');
+  const [vehicleSearch, setVehicleSearch] = useState('');
+  const [showDriverDropdown, setShowDriverDropdown] = useState(false);
+  const [showVehicleDropdown, setShowVehicleDropdown] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
+
   // Logic states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +37,40 @@ export default function ConfirmBookingModal({ inquiry, onClose, onConfirmComplet
   const [driverSent, setDriverSent] = useState(false);
   const [customerSent, setCustomerSent] = useState(false);
 
+  // Fetch active drivers and vehicles on mount
+  React.useEffect(() => {
+    const loadEntities = async () => {
+      try {
+        const [allDrivers, allVehicles] = await Promise.all([
+          SupabaseService.getDrivers(),
+          SupabaseService.getVehicles()
+        ]);
+        setDrivers(allDrivers.filter(d => d.status === 'Active'));
+        setVehicles(allVehicles.filter(v => v.status === 'Active'));
+      } catch (err) {
+        console.error('[Confirm Booking Modal] Failed to load drivers/vehicles:', err);
+      } finally {
+        setLoadingEntities(false);
+      }
+    };
+    loadEntities();
+  }, []);
+
   const handleConfirmSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Basic fields validation validation
-    if (!driverName.trim() || !driverPhone.trim() || !vehicleNumber.trim() || !bookingTime.trim()) {
-      setError('Please complete all driver and vehicle fields.');
+    // Entity assignment validations
+    if (!selectedDriverId) {
+      setError('Please search and select an active Driver from the list.');
+      return;
+    }
+    if (!selectedVehicleId) {
+      setError('Please search and select an active Vehicle from the list.');
+      return;
+    }
+    if (!bookingTime.trim()) {
+      setError('Please specify the Scheduled Departure Time.');
       return;
     }
 
@@ -53,7 +91,9 @@ export default function ConfirmBookingModal({ inquiry, onClose, onConfirmComplet
         vehicleNumber.trim().toUpperCase(),
         driverToken,
         trackingToken,
-        updatedReq
+        updatedReq,
+        selectedDriverId,
+        selectedVehicleId
       );
 
       if (dbInquiry) {
@@ -140,6 +180,17 @@ ${trackingLink}`;
     });
   };
 
+  // Local filtering lists based on searches
+  const filteredDrivers = drivers.filter(d => 
+    d.name.toLowerCase().includes(driverSearch.toLowerCase()) ||
+    d.phone.includes(driverSearch)
+  );
+
+  const filteredVehicles = vehicles.filter(v => 
+    v.vehicle_number.toLowerCase().includes(vehicleSearch.toLowerCase()) ||
+    (v.vehicle_model && v.vehicle_model.toLowerCase().includes(vehicleSearch.toLowerCase()))
+  );
+
   return (
     <div id="booking-confirm-overlay" className="fixed inset-0 bg-neutral-900/80 backdrop-blur-md flex items-center justify-center p-4 z-[9995] animate-fade-in">
       <motion.div
@@ -190,9 +241,9 @@ ${trackingLink}`;
                 <div className="space-y-3.5">
                   <h4 className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Assign Service Personnel</h4>
 
-                  {/* Driver Name input */}
+                  {/* Searchable Driver Dropdown */}
                   <div>
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Driver Name*</label>
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Assign Driver (Active)*</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
                         <User className="w-4 h-4" />
@@ -200,35 +251,68 @@ ${trackingLink}`;
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Anand Kumar"
-                        value={driverName}
-                        onChange={(e) => setDriverName(e.target.value)}
-                        className="w-full text-xs font-medium pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none transition"
+                        placeholder={loadingEntities ? "Loading active drivers..." : "Type driver name or phone..."}
+                        value={driverSearch}
+                        onFocus={() => {
+                          setShowDriverDropdown(true);
+                          setShowVehicleDropdown(false);
+                        }}
+                        onBlur={() => setTimeout(() => setShowDriverDropdown(false), 200)}
+                        onChange={(e) => {
+                          setDriverSearch(e.target.value);
+                          setShowDriverDropdown(true);
+                        }}
+                        className="w-full text-xs font-medium pl-10 pr-12 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none transition"
                       />
+                      {selectedDriverId && (
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded-full border border-emerald-200">OK</span>
+                        </div>
+                      )}
+                      
+                      {/* Search results list */}
+                      {showDriverDropdown && (
+                        <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg z-[9999] py-1">
+                          {filteredDrivers.length === 0 ? (
+                            <div className="px-4 py-2.5 text-xs text-neutral-500 italic">
+                              {loadingEntities ? 'Loading...' : 'No active drivers found'}
+                            </div>
+                          ) : (
+                            filteredDrivers.map(d => (
+                              <button
+                                type="button"
+                                key={d.id}
+                                onMouseDown={() => {
+                                  setSelectedDriverId(d.id);
+                                  setDriverName(d.name);
+                                  setDriverPhone(d.phone);
+                                  setDriverSearch(d.name);
+                                  setShowDriverDropdown(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-neutral-50 text-xs font-medium transition flex items-center justify-between"
+                              >
+                                <div>
+                                  <span className="text-neutral-900 block font-bold">{d.name}</span>
+                                  <span className="text-neutral-500 text-[10px] block">{d.phone}</span>
+                                </div>
+                                {selectedDriverId === d.id && <Check className="w-4 h-4 text-emerald-500" />}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Driver Mobile Phone input */}
-                  <div>
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Driver Mobile Number*</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-                        <Phone className="w-4 h-4" />
+                    {selectedDriverId && (
+                      <div className="mt-1 bg-neutral-50 px-3 py-2 rounded-xl border border-neutral-200 text-[10px] text-neutral-600 flex items-center gap-2 font-mono">
+                        <Phone className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                        <span>Driver Contact: <strong>{driverPhone}</strong></span>
                       </div>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="e.g. 919876543210 (Country code first)"
-                        value={driverPhone}
-                        onChange={(e) => setDriverPhone(e.target.value)}
-                        className="w-full text-xs font-medium pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none transition"
-                      />
-                    </div>
+                    )}
                   </div>
 
-                  {/* Vehicle License Plate input */}
+                  {/* Searchable Vehicle Dropdown */}
                   <div>
-                    <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Vehicle Plate/Registration Number*</label>
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Assign Vehicle (Active)*</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
                         <Car className="w-4 h-4" />
@@ -236,11 +320,57 @@ ${trackingLink}`;
                       <input
                         type="text"
                         required
-                        placeholder="e.g. KA-03-ME-2983"
-                        value={vehicleNumber}
-                        onChange={(e) => setVehicleNumber(e.target.value)}
-                        className="w-full text-xs font-medium pl-10 pr-4 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none transition"
+                        placeholder={loadingEntities ? "Loading active vehicles..." : "Type registration or model..."}
+                        value={vehicleSearch}
+                        onFocus={() => {
+                          setShowVehicleDropdown(true);
+                          setShowDriverDropdown(false);
+                        }}
+                        onBlur={() => setTimeout(() => setShowVehicleDropdown(false), 200)}
+                        onChange={(e) => {
+                          setVehicleSearch(e.target.value);
+                          setShowVehicleDropdown(true);
+                        }}
+                        className="w-full text-xs font-medium pl-10 pr-12 py-3 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-[#10B981] focus:ring-1 focus:ring-[#10B981] outline-none transition font-sans"
                       />
+                      {selectedVehicleId && (
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="text-[9px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full border border-indigo-200">OK</span>
+                        </div>
+                      )}
+                      
+                      {/* Search results list */}
+                      {showVehicleDropdown && (
+                        <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg z-[9999] py-1">
+                          {filteredVehicles.length === 0 ? (
+                            <div className="px-4 py-2.5 text-xs text-neutral-500 italic">
+                              {loadingEntities ? 'Loading...' : 'No active vehicles found'}
+                            </div>
+                          ) : (
+                            filteredVehicles.map(v => (
+                              <button
+                                type="button"
+                                key={v.id}
+                                onMouseDown={() => {
+                                  setSelectedVehicleId(v.id);
+                                  setVehicleNumber(v.vehicle_number);
+                                  setVehicleSearch(v.vehicle_number);
+                                  setShowVehicleDropdown(false);
+                                }}
+                                className="w-full px-4 py-2 text-left hover:bg-neutral-50 text-xs font-medium transition flex items-center justify-between"
+                              >
+                                <div>
+                                  <span className="text-neutral-900 block font-bold">{v.vehicle_number}</span>
+                                  <span className="text-neutral-500 text-[10px] block font-sans">
+                                    {v.vehicle_model ? `${v.vehicle_model} • ` : ''}Category: {v.category_id}
+                                  </span>
+                                </div>
+                                {selectedVehicleId === v.id && <Check className="w-4 h-4 text-indigo-500" />}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
