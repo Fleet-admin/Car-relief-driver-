@@ -3,7 +3,7 @@ import { Vehicle, VehicleCategory } from '../types';
 import { SupabaseService } from '../lib/supabase';
 import { 
   Car, Tag, Layers, Search, Plus, Edit2, Trash2, 
-  Check, X, Loader2, Image as ImageIcon 
+  Check, X, Loader2, Image as ImageIcon, Upload 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -477,19 +477,54 @@ export default function VehicleManagement({ onNotify }: VehicleManagementProps) 
 
                 {/* Photo link input */}
                 <div>
-                  <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Vehicle Image (URL or Base64 - Optional)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-                      <ImageIcon className="w-4 h-4" />
+                  <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Vehicle Image (URL or Local Upload)</label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+                        <ImageIcon className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Paste image URL or upload..."
+                        value={photo}
+                        onChange={(e) => setPhoto(e.target.value)}
+                        className="w-full text-xs font-medium pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-neutral-950 focus:ring-1 focus:ring-neutral-950 outline-none transition"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Paste public image URL..."
-                      value={photo}
-                      onChange={(e) => setPhoto(e.target.value)}
-                      className="w-full text-xs font-medium pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-neutral-950 focus:ring-1 focus:ring-neutral-950 outline-none transition"
-                    />
+                    <label className="px-3 py-2.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-xl text-neutral-700 text-xs font-extrabold font-sans cursor-pointer transition shrink-0 flex items-center gap-1.5 select-none">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const base64 = event.target?.result as string;
+                              setPhoto(base64);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
+                  {photo && (
+                    <div className="mt-2.5 flex items-center gap-3 bg-neutral-50 border border-neutral-150 p-2.5 rounded-xl max-w-xs">
+                      <span className="text-[9px] text-neutral-400 uppercase font-bold shrink-0">Preview:</span>
+                      <img src={photo} alt="Vehicle preview" referrerPolicy="no-referrer" className="h-8 object-contain rounded" />
+                      <button 
+                        type="button" 
+                        onClick={() => setPhoto('')} 
+                        className="text-red-500 hover:text-red-700 text-[10px] font-bold ml-auto"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Status selection buttons */}

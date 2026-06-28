@@ -3,7 +3,7 @@ import { GeneralSettings } from '../types';
 import { SupabaseService } from '../lib/supabase';
 import { 
   Building2, Image as ImageIcon, Phone, Mail, MapPin, 
-  Globe, Save, RotateCcw, Loader2 
+  Globe, Save, RotateCcw, Loader2, Upload 
 } from 'lucide-react';
 
 interface SettingsManagementProps {
@@ -125,23 +125,52 @@ export default function SettingsManagement({ onNotify }: SettingsManagementProps
 
         {/* Company Logo Image Link */}
         <div>
-          <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Company Logo Brand Asset (URL - Optional)</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
-              <ImageIcon className="w-4 h-4" />
+          <label className="text-[10px] font-bold text-neutral-500 uppercase block mb-1">Company Logo Brand Asset (URL or Local Upload)</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400">
+                <ImageIcon className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                placeholder="Paste company logo public image URL or upload..."
+                value={companyLogo}
+                onChange={(e) => setCompanyLogo(e.target.value)}
+                className="w-full text-xs font-medium pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-neutral-950 focus:ring-1 focus:ring-neutral-950 outline-none transition"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Paste company logo public image URL..."
-              value={companyLogo}
-              onChange={(e) => setCompanyLogo(e.target.value)}
-              className="w-full text-xs font-medium pl-10 pr-4 py-2.5 bg-neutral-50 border border-neutral-300 rounded-xl focus:border-neutral-950 focus:ring-1 focus:ring-neutral-950 outline-none transition"
-            />
+            <label className="px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded-xl text-neutral-700 text-xs font-extrabold font-sans cursor-pointer transition shrink-0 flex items-center gap-2 select-none">
+              <Upload className="w-4 h-4" />
+              <span>Upload</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      const base64 = event.target?.result as string;
+                      setCompanyLogo(base64);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
           </div>
           {companyLogo && (
             <div className="mt-2.5 flex items-center gap-3 bg-neutral-50 border border-neutral-150 p-2.5 rounded-xl max-w-xs">
               <span className="text-[9px] text-neutral-400 uppercase font-bold shrink-0">Logo Preview:</span>
               <img src={companyLogo} alt="Logo preview" referrerPolicy="no-referrer" className="h-6 object-contain" />
+              <button 
+                type="button" 
+                onClick={() => setCompanyLogo('')} 
+                className="text-red-500 hover:text-red-700 text-[10px] font-bold ml-auto"
+              >
+                Clear
+              </button>
             </div>
           )}
         </div>
