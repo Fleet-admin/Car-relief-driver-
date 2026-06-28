@@ -125,7 +125,6 @@ export default function ConfirmBookingModal({ inquiry, onClose, onConfirmComplet
     const text = `New Trip Assigned
 
 Customer: ${createdBooking.customer_name}
-Phone: ${createdBooking.customer_phone}
 
 Pickup:
 ${createdBooking.pickup_location}
@@ -136,10 +135,13 @@ ${createdBooking.destination_location}
 Vehicle:
 ${createdBooking.vehicle_number}
 
+Date/Time:
+${createdBooking.booking_date} at ${createdBooking.booking_time}
+
 Start Trip:
 ${driverLink}`;
 
-    const sanitizedPhone = createdBooking.driver_phone.replace(/[^0-9]/g, '');
+    const sanitizedPhone = createdBooking.driver_phone ? createdBooking.driver_phone.replace(/[^0-9]/g, '') : '';
     return `https://wa.me/${sanitizedPhone}?text=${encodeURIComponent(text)}`;
   };
 
@@ -153,16 +155,16 @@ ${driverLink}`;
 Driver:
 ${createdBooking.driver_name}
 
-Phone:
-${createdBooking.driver_phone}
-
 Vehicle:
 ${createdBooking.vehicle_number}
+
+Date/Time:
+${createdBooking.booking_date} at ${createdBooking.booking_time}
 
 Track Vehicle:
 ${trackingLink}`;
 
-    const sanitizedPhone = createdBooking.customer_phone.replace(/[^0-9]/g, '');
+    const sanitizedPhone = createdBooking.customer_phone ? createdBooking.customer_phone.replace(/[^0-9]/g, '') : '';
     return `https://wa.me/${sanitizedPhone}?text=${encodeURIComponent(text)}`;
   };
 

@@ -14,6 +14,8 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [vehicle, setVehicle] = useState<any | null>(null);
+  const [category, setCategory] = useState<any | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -44,6 +46,30 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
 
     fetchBookingDetails();
   }, [trackingToken]);
+
+  // Load associated vehicle and category details
+  useEffect(() => {
+    if (!booking) return;
+    async function fetchVehicleDetails() {
+      try {
+        if (booking.vehicle_id || booking.vehicle_number) {
+          const vehiclesList = await SupabaseService.getVehicles();
+          const foundVehicle = vehiclesList.find(v => v.id === booking.vehicle_id || v.vehicle_number === booking.vehicle_number);
+          if (foundVehicle) {
+            setVehicle(foundVehicle);
+            const categoriesList = await SupabaseService.getVehicleCategories();
+            const foundCategory = categoriesList.find(c => c.id === foundVehicle.category_id || c.name === foundVehicle.category_id);
+            if (foundCategory) {
+              setCategory(foundCategory);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching extra vehicle/category details for customer tracking:', err);
+      }
+    }
+    fetchVehicleDetails();
+  }, [booking?.vehicle_id, booking?.vehicle_number]);
 
   // Subscribe to real-time coordinate updates
   useEffect(() => {
@@ -561,23 +587,59 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
 
         {/* Assigned Personnel Details */}
         <div className="p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-neutral-150 pb-4">
-            <div>
-              <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Your Assigned Driver</p>
-              <p className="text-sm font-bold text-neutral-900 mt-1">{booking.driver_name}</p>
-              <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-0.5">
-                Vehicle Plate: <span className="font-mono font-bold text-neutral-800">{booking.vehicle_number}</span>
-              </p>
+          <div className="flex items-start justify-between border-b border-neutral-150 pb-4 gap-3">
+            <div className="flex-1 space-y-2">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Your Assigned Driver</p>
+                <p className="text-sm font-bold text-neutral-900 mt-1">{booking.driver_name}</p>
+                {!isCompleted && booking.driver_phone && (
+                  <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1" id="driver-phone-text-container">
+                    Phone: <span className="font-mono font-bold text-neutral-800">{booking.driver_phone}</span>
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-neutral-100">
+                <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Vehicle Details</p>
+                {category && (
+                  <p className="text-xs text-neutral-800 font-bold mt-1">
+                    Category: <span className="text-indigo-600">{category.name}</span>
+                  </p>
+                )}
+                <p className="text-xs text-neutral-500 font-medium font-sans flex flex-wrap items-center gap-2 mt-0.5">
+                  Plate: <span className="font-mono font-bold text-neutral-800">{booking.vehicle_number}</span>
+                  {vehicle?.vehicle_model && (
+                    <>
+                      <span className="text-neutral-300">|</span>
+                      <span>Model: <span className="font-semibold text-neutral-700">{vehicle.vehicle_model}</span></span>
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
             
-            {!isCompleted && booking.driver_phone && (
-              <a
-                href={`tel:${booking.driver_phone}`}
-                className="p-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-full transition flex items-center justify-center active:scale-95 border border-neutral-200"
-              >
-                <Phone className="w-4 h-4 text-neutral-800" />
-              </a>
-            )}
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {!isCompleted && booking.driver_phone && (
+                <a
+                  href={`tel:${booking.driver_phone}`}
+                  id="btn-call-driver-tracking"
+                  className="p-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-full transition flex items-center justify-center active:scale-95 border border-neutral-200"
+                >
+                  <Phone className="w-4 h-4 text-neutral-800" />
+                </a>
+              )}
+
+              {(vehicle?.photo || category?.image_url) && (
+                <div className="w-20 h-14 bg-neutral-100 border border-neutral-200 rounded-xl overflow-hidden p-1 flex items-center justify-center mt-1">
+                  <img 
+                    src={vehicle?.photo || category?.image_url} 
+                    alt="Vehicle preview" 
+                    referrerPolicy="no-referrer"
+                    className="max-w-full max-h-full object-contain rounded"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Location Listings Info Cards */}

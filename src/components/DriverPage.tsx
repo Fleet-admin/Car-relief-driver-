@@ -15,11 +15,37 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [trackingActive, setTrackingActive] = useState(false);
   const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [vehicle, setVehicle] = useState<any | null>(null);
+  const [category, setCategory] = useState<any | null>(null);
   
   const geoWatchId = useRef<number | null>(null);
   const updateIntervalId = useRef<any | null>(null);
   const latestCoords = useRef<{ latitude: number; longitude: number; speed?: number | null; heading?: number | null } | null>(null);
   const bookingRef = useRef<Booking | null>(null);
+
+  // Load associated vehicle and category details
+  useEffect(() => {
+    if (!booking) return;
+    async function fetchVehicleDetails() {
+      try {
+        if (booking.vehicle_id || booking.vehicle_number) {
+          const vehiclesList = await SupabaseService.getVehicles();
+          const foundVehicle = vehiclesList.find(v => v.id === booking.vehicle_id || v.vehicle_number === booking.vehicle_number);
+          if (foundVehicle) {
+            setVehicle(foundVehicle);
+            const categoriesList = await SupabaseService.getVehicleCategories();
+            const foundCategory = categoriesList.find(c => c.id === foundVehicle.category_id || c.name === foundVehicle.category_id);
+            if (foundCategory) {
+              setCategory(foundCategory);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching extra vehicle/category details for driver view:', err);
+      }
+    }
+    fetchVehicleDetails();
+  }, [booking?.vehicle_id, booking?.vehicle_number]);
 
   // Sync ref with state
   useEffect(() => {
@@ -437,24 +463,70 @@ export default function DriverPage({ driverToken }: DriverPageProps) {
         {/* Client details info */}
         <div className="p-6 space-y-5">
           {/* Customer specifications container */}
-          <div className="border-b border-neutral-150 pb-5">
-            <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Client Details</h3>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-neutral-900 text-base">{booking.customer_name}</p>
+          <div className="border-b border-neutral-150 pb-5 space-y-4">
+            <div>
+              <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Client Details</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-neutral-900 text-base">{booking.customer_name}</p>
+                  {!isCompleted && booking.customer_phone && (
+                    <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1" id="customer-phone-text-container">
+                      Phone: <span className="font-mono font-bold text-neutral-800">{booking.customer_phone}</span>
+                    </p>
+                  )}
+                </div>
                 {!isCompleted && booking.customer_phone && (
-                  <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1">
-                    <Phone className="w-3 h-3" /> {booking.customer_phone}
-                  </p>
+                  <a
+                    href={`tel:${booking.customer_phone}`}
+                    id="btn-call-customer-driverview"
+                    className="p-3 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 rounded-full transition flex items-center justify-center active:scale-95"
+                  >
+                    <Phone className="w-4 h-4" />
+                  </a>
                 )}
               </div>
-              {!isCompleted && booking.customer_phone && (
-                <a
-                  href={`tel:${booking.customer_phone}`}
-                  className="p-3 bg-neutral-100 text-neutral-900 hover:bg-neutral-200 rounded-full transition flex items-center justify-center active:scale-95"
-                >
-                  <Phone className="w-4 h-4" />
-                </a>
+            </div>
+
+            <div className="pt-3 border-t border-neutral-100 flex items-start justify-between gap-3">
+              <div className="flex-1 space-y-2">
+                <div>
+                  <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Driver Assignment</h3>
+                  <p className="text-sm font-bold text-neutral-800">{booking.driver_name || 'Assigned Driver'}</p>
+                  {!isCompleted && booking.driver_phone && (
+                    <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-0.5" id="driver-phone-text-container">
+                      Phone: <span className="font-mono font-bold text-neutral-800">{booking.driver_phone}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-neutral-100">
+                  <h3 className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Vehicle Details</h3>
+                  {category && (
+                    <p className="text-xs text-neutral-800 font-bold mt-1">
+                      Category: <span className="text-indigo-600">{category.name}</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-neutral-500 font-medium font-sans flex flex-wrap items-center gap-2 mt-0.5">
+                    Plate: <span className="font-mono font-bold text-neutral-800">{booking.vehicle_number}</span>
+                    {vehicle?.vehicle_model && (
+                      <>
+                        <span className="text-neutral-300">|</span>
+                        <span>Model: <span className="font-semibold text-neutral-700">{vehicle.vehicle_model}</span></span>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {(vehicle?.photo || category?.image_url) && (
+                <div className="w-20 h-14 bg-neutral-50 border border-neutral-200 rounded-xl overflow-hidden p-1 flex items-center justify-center shrink-0 self-center">
+                  <img 
+                    src={vehicle?.photo || category?.image_url} 
+                    alt="Vehicle preview" 
+                    referrerPolicy="no-referrer"
+                    className="max-w-full max-h-full object-contain rounded"
+                  />
+                </div>
               )}
             </div>
           </div>
