@@ -1009,6 +1009,78 @@ export const SupabaseService = {
     }
   },
 
+  async deleteDriver(driverId: string): Promise<{ success: boolean; error?: string }> {
+    // 1. Check if driver is assigned to any active or historical bookings in Supabase
+    if (supabaseClient) {
+      try {
+        const { data: bookings, error: checkError } = await supabaseClient
+          .from('inquiries')
+          .select('id, driver_name')
+          .eq('driver_id', driverId);
+        
+        if (!checkError && bookings && bookings.length > 0) {
+          return { 
+            success: false, 
+            error: `Cannot delete driver because they are assigned to ${bookings.length} active or historical booking(s).` 
+          };
+        }
+      } catch (err) {
+        console.warn('[Supabase Service warning] Exception checking driver bookings:', err);
+      }
+    }
+
+    // Also check local storage inquiries as fallback or for consistency
+    try {
+      const storedInquiries = localStorage.getItem('fleet_inquiries');
+      if (storedInquiries) {
+        const localInquiries: Inquiry[] = JSON.parse(storedInquiries);
+        const assignedLocal = localInquiries.filter(inq => inq.driver_id === driverId);
+        if (assignedLocal.length > 0) {
+          return { 
+            success: false, 
+            error: `Cannot delete driver because they are assigned to ${assignedLocal.length} local booking(s).` 
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[Supabase Service warning] Exception checking local inquiries:', e);
+    }
+
+    // 2. Perform delete in Supabase
+    if (supabaseClient) {
+      try {
+        const { error } = await supabaseClient
+          .from('drivers')
+          .delete()
+          .eq('id', driverId);
+        
+        if (error) {
+          console.error('[Supabase Service error] Failed to delete driver from DB:', error);
+          return { success: false, error: error.message };
+        }
+        console.log('[Supabase Service success] Driver deleted from DB.');
+      } catch (err: any) {
+        console.warn('[Supabase Service warning] Driver delete exception:', err);
+        return { success: false, error: err.message };
+      }
+    }
+
+    // 3. Update local storage & dispatch sync event
+    try {
+      const stored = localStorage.getItem('fleet_drivers');
+      let updatedList: Driver[] = [];
+      if (stored) {
+        const driversList: Driver[] = JSON.parse(stored);
+        updatedList = driversList.filter(d => d.id !== driverId);
+        localStorage.setItem('fleet_drivers', JSON.stringify(updatedList));
+      }
+      window.dispatchEvent(new CustomEvent('supabase-drivers-updated', { detail: updatedList }));
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
   // --- Vehicles Management ---
   async getVehicles(): Promise<Vehicle[]> {
     if (supabaseClient) {

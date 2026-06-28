@@ -555,7 +555,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row" id="admin-root-layout">
       {/* Desktop Fixed Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-neutral-950 text-white p-5 border-r border-neutral-800 shrink-0 select-none">
+      <aside className="hidden md:flex flex-col w-64 bg-neutral-950 text-white p-5 border-r border-neutral-800 shrink-0 select-none md:sticky md:top-0 md:h-screen md:overflow-y-auto z-[9990]">
         <div className="flex items-center gap-3 pb-6 border-b border-neutral-800 mb-6">
           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center p-1 border border-white/15 overflow-hidden">
             {generalSettings.company_logo ? (
@@ -650,7 +650,7 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       </aside>
 
       {/* Mobile Header Top bar */}
-      <header className="md:hidden bg-neutral-950 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-[9991] select-none border-b border-neutral-800">
+      <header className="md:hidden bg-neutral-950 text-white px-4 pt-[calc(0.875rem+env(safe-area-inset-top,0px))] pb-3.5 flex items-center justify-between sticky top-0 z-[9991] select-none border-b border-neutral-800 w-full shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center p-0.5 overflow-hidden">
             {generalSettings.company_logo ? (

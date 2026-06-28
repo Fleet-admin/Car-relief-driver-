@@ -30,6 +30,17 @@ export default function DriverManagement({ onNotify }: DriverManagementProps) {
 
   useEffect(() => {
     loadDrivers();
+
+    const handleDriversUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<Driver[]>;
+      if (customEvent.detail && Array.isArray(customEvent.detail)) {
+        setDrivers(customEvent.detail);
+      }
+    };
+    window.addEventListener('supabase-drivers-updated', handleDriversUpdated);
+    return () => {
+      window.removeEventListener('supabase-drivers-updated', handleDriversUpdated);
+    };
   }, []);
 
   const loadDrivers = async () => {
@@ -139,13 +150,17 @@ export default function DriverManagement({ onNotify }: DriverManagementProps) {
       return;
     }
     try {
-      const updatedList = drivers.filter(d => d.id !== driverId);
-      await SupabaseService.saveDrivers(updatedList);
-      setDrivers(updatedList);
-      onNotify(`Driver ${driverName} has been deleted.`);
-    } catch (err) {
+      const res = await SupabaseService.deleteDriver(driverId);
+      if (res.success) {
+        onNotify(`Driver ${driverName} has been deleted successfully.`);
+        // Reload list to ensure fresh state
+        loadDrivers();
+      } else {
+        onNotify(res.error || `Failed to delete driver ${driverName}.`);
+      }
+    } catch (err: any) {
       console.error('Failed to delete driver:', err);
-      onNotify('Failed to delete driver. Please try again.');
+      onNotify(err.message || 'Failed to delete driver. Please try again.');
     }
   };
 

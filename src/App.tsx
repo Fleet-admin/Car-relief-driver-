@@ -613,7 +613,11 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 md:pb-8">
+      <main className={`flex-grow ${
+        (activeTab === 'admin' || !!driverToken || !!trackingToken)
+          ? 'w-full' 
+          : 'max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 md:pb-8'
+      }`}>
         <AnimatePresence mode="wait">
           {driverToken ? (
             <motion.div
