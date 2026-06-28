@@ -39,7 +39,7 @@ import {
   Menu,
   Plus
 } from 'lucide-react';
-import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory } from '../types';
+import { Inquiry, InquiryStatus, DashboardMetrics, VehicleCategory, GeneralSettings } from '../types';
 import { SupabaseService } from '../lib/supabase';
 import ConfirmBookingModal from './ConfirmBookingModal';
 import DriverManagement from './DriverManagement';
@@ -88,6 +88,14 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    company_name: 'Car & Driver Relief Services',
+    company_logo: '',
+    contact_number: '8637323873',
+    email_address: 'bappa.admin@gmail.com',
+    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+    timezone: 'Asia/Kolkata'
+  });
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -352,20 +360,52 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
     setErrorText(null);
     try {
       // High-speed parallel connection pooling queries
-      const [data, cats] = await Promise.all([
+      const [data, cats, settingsData] = await Promise.all([
         SupabaseService.queryInquiries(),
-        SupabaseService.getVehicleCategories()
+        SupabaseService.getVehicleCategories(),
+        SupabaseService.getSettings()
       ]);
       setInquiries(data);
       console.log('Data received from Supabase', cats);
       setVehicleCategories(cats);
       console.log('Data displayed in the Admin Portal', cats);
+      if (settingsData) {
+        setGeneralSettings(settingsData);
+      }
     } catch (err: any) {
       setErrorText(err?.message || 'Database lookup query failed. Check SQL tables schema.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    const fetchSettings = async () => {
+      try {
+        const liveSettings = await SupabaseService.getSettings();
+        if (active && liveSettings) {
+          setGeneralSettings(liveSettings);
+        }
+      } catch (err) {
+        console.warn('Could not load general settings in AdminDashboard:', err);
+      }
+    };
+    fetchSettings();
+
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<GeneralSettings>;
+      if (customEvent.detail) {
+        setGeneralSettings(customEvent.detail);
+      }
+    };
+    window.addEventListener('supabase-settings-updated', handleSettingsUpdate);
+
+    return () => {
+      active = false;
+      window.removeEventListener('supabase-settings-updated', handleSettingsUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -467,8 +507,12 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto my-16 bg-white border border-neutral-200 rounded-2xl p-8 shadow-xl text-center" id="admin-passcode-gate">
-        <div className="w-16 h-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md overflow-hidden p-1.5">
-          <img src="/icon.svg" alt="Car & Driver Relief" className="w-full h-full object-contain" />
+        <div className="w-16 h-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md overflow-hidden p-1.5 border border-neutral-800">
+          {generalSettings.company_logo ? (
+            <img src={generalSettings.company_logo} alt={generalSettings.company_name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+          ) : (
+            <img src="/icon.svg" alt={generalSettings.company_name} className="w-full h-full object-contain" />
+          )}
         </div>
         <h3 className="text-xl font-bold text-neutral-950 tracking-tight">Admin Portal Authorization</h3>
         <p className="text-xs text-neutral-500 mt-2 font-sans">
@@ -513,11 +557,15 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       {/* Desktop Fixed Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-neutral-950 text-white p-5 border-r border-neutral-800 shrink-0 select-none">
         <div className="flex items-center gap-3 pb-6 border-b border-neutral-800 mb-6">
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center p-1 border border-white/15">
-            <img src="/icon.svg" alt="Car & Driver Relief" className="w-full h-full object-contain" />
+          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center p-1 border border-white/15 overflow-hidden">
+            {generalSettings.company_logo ? (
+              <img src={generalSettings.company_logo} alt={generalSettings.company_name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            ) : (
+              <img src="/icon.svg" alt={generalSettings.company_name} className="w-full h-full object-contain" />
+            )}
           </div>
-          <div>
-            <h1 className="text-xs font-black tracking-tight leading-none text-white">RELIEF SERVICES</h1>
+          <div className="overflow-hidden">
+            <h1 className="text-xs font-black tracking-tight leading-none text-white uppercase truncate max-w-[140px]">{generalSettings.company_name}</h1>
             <span className="text-[9px] font-bold text-amber-400 tracking-wider uppercase mt-1.5 block">Fleet Admin Portal</span>
           </div>
         </div>
@@ -604,8 +652,12 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
       {/* Mobile Header Top bar */}
       <header className="md:hidden bg-neutral-950 text-white px-4 py-3.5 flex items-center justify-between sticky top-0 z-[9991] select-none border-b border-neutral-800">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center p-0.5">
-            <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center p-0.5 overflow-hidden">
+            {generalSettings.company_logo ? (
+              <img src={generalSettings.company_logo} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            ) : (
+              <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+            )}
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-amber-400 block tracking-wider leading-none">Admin Area</span>
@@ -647,11 +699,15 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
             >
               <div className="flex items-center justify-between pb-5 border-b border-neutral-800 mb-5">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-white/10 rounded-lg p-0.5">
-                    <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+                  <div className="w-8 h-8 bg-white/10 rounded-lg p-0.5 overflow-hidden">
+                    {generalSettings.company_logo ? (
+                      <img src={generalSettings.company_logo} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <img src="/icon.svg" alt="Logo" className="w-full h-full object-contain" />
+                    )}
                   </div>
-                  <div>
-                    <h1 className="text-xs font-black text-white">RELIEF HUB</h1>
+                  <div className="overflow-hidden">
+                    <h1 className="text-xs font-black text-white uppercase truncate max-w-[140px]">{generalSettings.company_name}</h1>
                     <span className="text-[8px] font-bold text-amber-400 uppercase mt-0.5 block tracking-wider">Fleet Panel</span>
                   </div>
                 </div>

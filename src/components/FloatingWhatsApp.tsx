@@ -10,12 +10,14 @@ interface FloatingWhatsAppProps {
   phoneNumber: string;
   whatsappNumber: string;
   email: string;
+  companyName?: string;
 }
 
 export default function FloatingWhatsApp({
   phoneNumber,
   whatsappNumber,
   email,
+  companyName = 'Car & Driver Relief Services',
 }: FloatingWhatsAppProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -35,7 +37,7 @@ export default function FloatingWhatsApp({
               <span className="text-[9px] uppercase font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full inline-block">
                 Operators Online
               </span>
-              <h4 className="text-sm font-bold text-neutral-900 mt-1">Car & Driver Support Hotline</h4>
+              <h4 className="text-sm font-bold text-neutral-900 mt-1">{companyName} Support</h4>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -67,7 +69,7 @@ export default function FloatingWhatsApp({
             </a>
 
             <a
-              href={`https://wa.me/${formattedWhatsapp}?text=Hello,%20I'm%20inquiring%20about%20your%20Car%20and%20Driver%20Relief%20Services.`}
+              href={`https://wa.me/${formattedWhatsapp}?text=Hello,%20I'm%20inquiring%20about%20your%20${encodeURIComponent(companyName)}.`}
               target="_blank"
               rel="noreferrer"
               id="btn-support-whatsapp-now"

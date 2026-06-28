@@ -37,7 +37,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ServiceType, VehicleCategory } from './types';
+import { ServiceType, VehicleCategory, GeneralSettings } from './types';
 import MapPicker from './components/MapPicker';
 import InquiryForm from './components/InquiryForm';
 import AdminDashboard from './components/AdminDashboard';
@@ -303,10 +303,19 @@ export default function App() {
   const formRef = useRef<HTMLDivElement>(null);
   const [formServiceSelector, setFormServiceSelector] = useState<ServiceType>('Fleet Booking');
 
-  // Contact configurations
-  const contactPhone = '8637323873';
-  const contactWhatsapp = '8637323873';
-  const contactEmail = 'bappa.admin@gmail.com';
+  // General Brand and Contact Configurations
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    company_name: 'Car & Driver Relief Services',
+    company_logo: '',
+    contact_number: '8637323873',
+    email_address: 'bappa.admin@gmail.com',
+    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+    timezone: 'Asia/Kolkata'
+  });
+
+  const contactPhone = generalSettings.contact_number;
+  const contactWhatsapp = generalSettings.contact_number;
+  const contactEmail = generalSettings.email_address;
 
   // System-wide notification toast state
   const [notifMessage, setNotifMessage] = useState<string | null>(null);
@@ -319,22 +328,30 @@ export default function App() {
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  // Fetch live vehicle categories rate configs on mount so stats reflect dynamic db
+  // Fetch live vehicle categories and general settings on mount
   useEffect(() => {
     let active = true;
-    const fetchCats = async () => {
+    const loadInitialData = async () => {
       try {
-        const liveCats = await SupabaseService.getVehicleCategories();
-        if (active && liveCats && liveCats.length > 0) {
-          setVehicleCategories(liveCats);
+        const [liveCats, liveSettings] = await Promise.all([
+          SupabaseService.getVehicleCategories(),
+          SupabaseService.getSettings()
+        ]);
+        if (active) {
+          if (liveCats && liveCats.length > 0) {
+            setVehicleCategories(liveCats);
+          }
+          if (liveSettings) {
+            setGeneralSettings(liveSettings);
+          }
         }
       } catch (err) {
-        console.warn('Could not load categories in main App component:', err);
+        console.warn('Could not load initial data in main App component:', err);
       } finally {
         if (active) setLoadingCategories(false);
       }
     };
-    fetchCats();
+    loadInitialData();
     return () => {
       active = false;
     };
@@ -342,15 +359,26 @@ export default function App() {
 
   // Listen to live updates from general page events (e.g. admin saves)
   useEffect(() => {
-    const handleSettingsUpdate = (e: Event) => {
+    const handleCatsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<VehicleCategory[]>;
       if (customEvent.detail && Array.isArray(customEvent.detail)) {
         setVehicleCategories(customEvent.detail);
       }
     };
-    window.addEventListener('supabase-vehicle-categories-updated', handleSettingsUpdate);
+
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<GeneralSettings>;
+      if (customEvent.detail) {
+        setGeneralSettings(customEvent.detail);
+      }
+    };
+
+    window.addEventListener('supabase-vehicle-categories-updated', handleCatsUpdate);
+    window.addEventListener('supabase-settings-updated', handleSettingsUpdate);
+
     return () => {
-      window.removeEventListener('supabase-vehicle-categories-updated', handleSettingsUpdate);
+      window.removeEventListener('supabase-vehicle-categories-updated', handleCatsUpdate);
+      window.removeEventListener('supabase-settings-updated', handleSettingsUpdate);
     };
   }, []);
 
@@ -450,15 +478,16 @@ export default function App() {
                 className="flex items-center gap-2 text-left group animate-fade-in shrink-0"
               >
                 <div className="p-0.5 md:p-1 bg-neutral-950 rounded-lg md:rounded-xl shadow-md group-hover:bg-[#10B981] transition-all overflow-hidden w-8 h-8 md:w-10 md:h-10 flex items-center justify-center">
-                  <img src="/icon.svg" alt="Car & Driver" className="w-6 h-6 md:w-8 md:h-8 object-contain animate-pulse-slow" />
+                  {generalSettings.company_logo ? (
+                    <img src={generalSettings.company_logo} alt={generalSettings.company_name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  ) : (
+                    <img src="/icon.svg" alt={generalSettings.company_name} className="w-6 h-6 md:w-8 md:h-8 object-contain animate-pulse-slow" />
+                  )}
                 </div>
                 <div>
-                  <h1 className="text-[11px] md:text-sm font-extrabold tracking-tight text-neutral-950 uppercase leading-none font-display">
-                    Car & Driver
+                  <h1 className="text-[11px] md:text-sm font-extrabold tracking-tight text-neutral-950 uppercase leading-tight font-display max-w-[200px] md:max-w-xs break-words">
+                    {generalSettings.company_name}
                   </h1>
-                  <span className="text-[8px] md:text-[10px] text-neutral-400 font-mono tracking-widest block mt-0.5 font-bold uppercase leading-none">
-                    Relief Services
-                  </span>
                 </div>
               </button>
 
@@ -637,7 +666,7 @@ export default function App() {
                         </span>
 
                         <h2 className="text-4xl sm:text-5.5xl font-extrabold text-white tracking-tight leading-tight uppercase font-display">
-                          Car & Driver Relief Services
+                          {generalSettings.company_name}
                         </h2>
 
                         <p className="text-base sm:text-lg text-neutral-300 font-sans leading-relaxed max-w-3xl mx-auto">
@@ -746,7 +775,7 @@ export default function App() {
                           Elegance, Security, & Absolute Accountability
                         </h3>
                         <p className="text-xs text-neutral-500 leading-relaxed font-sans mt-1">
-                          At Car & Driver Relief Services, we provide industry-leading luxury transportation, on-demand temporary relief chauffeurs, and corporate logistics. With a 100% background-vetted driver network and real-time database pricing, we ensure seamless, safe, and transparent commutes.
+                          At {generalSettings.company_name}, we provide industry-leading luxury transportation, on-demand temporary relief chauffeurs, and corporate logistics. With a 100% background-vetted driver network and real-time database pricing, we ensure seamless, safe, and transparent commutes.
                         </p>
                       </div>
 
@@ -1093,7 +1122,7 @@ export default function App() {
                         Corporate Profile
                       </span>
                       <h3 className="text-3xl font-extrabold text-neutral-900 tracking-tight mt-3">
-                        About Car & Driver Relief Services
+                        About {generalSettings.company_name}
                       </h3>
                       <p className="text-xs text-neutral-500 mt-2 font-sans max-w-xl mx-auto">
                         A technology-first, safety-compliant driver logistics utility built for uncompromising reliability.
@@ -1105,7 +1134,7 @@ export default function App() {
                       <div className="bg-white border border-neutral-200 rounded-2xl p-6 md:p-8 space-y-4" id="about-profile">
                         <h4 className="text-lg font-bold text-neutral-950 tracking-tight">Full Company Profile</h4>
                         <p className="text-xs text-neutral-600 leading-relaxed font-sans">
-                          Founded in 2021 upon principles of absolute punctuality, rigorous criminal background vetting, and complete pricing transparency, <strong>Car & Driver Relief Services</strong> has evolved into the region's premier dispatch network.
+                          Founded in 2021 upon principles of absolute punctuality, rigorous criminal background vetting, and complete pricing transparency, <strong>{generalSettings.company_name}</strong> has evolved into the region's premier dispatch network.
                         </p>
                         <p className="text-xs text-neutral-600 leading-relaxed font-sans">
                           We operate physical fleets paired with an active vetted chauffeur registry. By utilizing secure geolocational data and automated fare computing, we remove negotiations and bring professional standards to transit logistics.
@@ -1265,10 +1294,9 @@ export default function App() {
                         <div className="bg-neutral-900 text-white rounded-2xl p-6 border border-neutral-850 space-y-3 shadow-md" id="contact-hq-card">
                           <span className="text-[9px] uppercase font-bold text-amber-500 tracking-wider font-mono">Operations Base</span>
                           <h4 className="font-extrabold text-base tracking-tight">Corporate Headquarters</h4>
-                          <p className="text-xs text-neutral-300 font-sans leading-relaxed">
-                            Car & Driver Relief Corporate Plaza<br />
-                            7th Operational Floor, Logistics Tower<br />
-                            Aerocity Transit Zone, Delhi Gurgaon NCR, India
+                          <p className="text-xs text-neutral-300 font-sans leading-relaxed whitespace-pre-wrap">
+                            <strong>{generalSettings.company_name}</strong><br />
+                            {generalSettings.office_address}
                           </p>
                           <div className="pt-3 border-t border-neutral-850 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -1328,6 +1356,7 @@ export default function App() {
           phoneNumber={contactPhone}
           whatsappNumber={contactPhone}
           email={contactEmail}
+          companyName={generalSettings.company_name}
         />
       )}
 
