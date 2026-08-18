@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Booking } from '../types';
 import { SupabaseService } from '../lib/supabase';
-import { Shield, Phone, MapPin, Loader2, Navigation, Compass, Map, Check } from 'lucide-react';
+import { Shield, Phone, MapPin, Loader2, Navigation, Compass, Map, Check, Car } from 'lucide-react';
 import { motion } from 'motion/react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,6 +16,8 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
   const [error, setError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<any | null>(null);
   const [category, setCategory] = useState<any | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -70,6 +72,17 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
     }
     fetchVehicleDetails();
   }, [booking?.vehicle_id, booking?.vehicle_number]);
+
+  const imageUrl = vehicle?.photo || category?.image_url || '';
+  useEffect(() => {
+    if (imageUrl) {
+      setImageLoading(true);
+      setImageError(false);
+    } else {
+      setImageLoading(false);
+      setImageError(true);
+    }
+  }, [imageUrl]);
 
   // Subscribe to real-time coordinate updates
   useEffect(() => {
@@ -587,61 +600,89 @@ export default function CustomerTrackingPage({ trackingToken }: CustomerTracking
 
         {/* Assigned Personnel Details */}
         <div className="p-5 space-y-4">
-          <div className="flex items-start justify-between border-b border-neutral-150 pb-4 gap-3">
-            <div className="flex-1 space-y-2">
-              <div>
-                <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Your Assigned Driver</p>
-                <p className="text-sm font-bold text-neutral-900 mt-1">{booking.driver_name}</p>
-                {!isCompleted && booking.driver_phone && (
-                  <p className="text-xs text-neutral-500 font-medium font-sans flex items-center gap-1 mt-1" id="driver-phone-text-container">
-                    Phone: <span className="font-mono font-bold text-neutral-800">{booking.driver_phone}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-neutral-100">
-                <p className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">Vehicle Details</p>
-                {category && (
-                  <p className="text-xs text-neutral-800 font-bold mt-1">
-                    Category: <span className="text-indigo-600">{category.name}</span>
-                  </p>
-                )}
-                <p className="text-xs text-neutral-500 font-medium font-sans flex flex-wrap items-center gap-2 mt-0.5">
-                  Plate: <span className="font-mono font-bold text-neutral-800">{booking.vehicle_number}</span>
-                  {vehicle?.vehicle_model && (
-                    <>
-                      <span className="text-neutral-300">|</span>
-                      <span>Model: <span className="font-semibold text-neutral-700">{vehicle.vehicle_model}</span></span>
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              {!isCompleted && booking.driver_phone && (
-                <a
-                  href={`tel:${booking.driver_phone}`}
-                  id="btn-call-driver-tracking"
-                  className="p-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 rounded-full transition flex items-center justify-center active:scale-95 border border-neutral-200"
-                >
-                  <Phone className="w-4 h-4 text-neutral-800" />
-                </a>
+          <div className="bg-white border border-neutral-150 rounded-2xl overflow-hidden shadow-sm">
+            {/* Fixed Vehicle Image Container */}
+            <div className="relative w-full aspect-[16/9] bg-neutral-100 overflow-hidden flex items-center justify-center">
+              {/* Image Loading State */}
+              {imageLoading && (
+                <div className="absolute inset-0 bg-neutral-100 flex items-center justify-center animate-pulse">
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="w-6 h-6 text-neutral-400 animate-spin" />
+                    <span className="text-[10px] text-neutral-400 font-semibold font-sans">Loading vehicle photo...</span>
+                  </div>
+                </div>
               )}
 
-              {(vehicle?.photo || category?.image_url) && (
-                <div className="w-20 h-14 bg-neutral-100 border border-neutral-200 rounded-xl overflow-hidden p-1 flex items-center justify-center mt-1">
-                  <img 
-                    src={vehicle?.photo || category?.image_url} 
-                    alt="Vehicle preview" 
-                    referrerPolicy="no-referrer"
-                    className="max-w-full max-h-full object-contain rounded"
-                  />
+              {/* Vehicle Image */}
+              {imageUrl && !imageError ? (
+                <img
+                  src={imageUrl}
+                  alt={vehicle?.vehicle_model || category?.name || "Vehicle"}
+                  referrerPolicy="no-referrer"
+                  className={`w-full h-full object-cover object-center transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+                  onLoad={() => setImageLoading(false)}
+                  onError={() => {
+                    setImageError(true);
+                    setImageLoading(false);
+                  }}
+                />
+              ) : (
+                /* Premium Fallback Placeholder based on vehicle category */
+                <div className="absolute inset-0 bg-gradient-to-br from-neutral-50 to-neutral-100 flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-neutral-200/60 mb-2 text-neutral-400">
+                    <Car className="w-7 h-7 text-indigo-500" />
+                  </div>
+                  <span className="text-xs font-bold text-neutral-700 font-sans">
+                    {category?.name || 'Assigned Vehicle'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-semibold mt-0.5">
+                    {booking.vehicle_number || 'Plate Pending'}
+                  </span>
                 </div>
               )}
             </div>
-          </div>
 
+            {/* Vehicle Details & Action Layout */}
+            <div className="p-4 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/50">
+                    {category?.name || 'Standard Service'}
+                  </span>
+                  <h4 className="text-base font-extrabold text-neutral-900 tracking-tight leading-tight pt-0.5">
+                    {vehicle?.vehicle_model || category?.name || 'Assigned Vehicle'}
+                  </h4>
+                  <p className="text-xs text-neutral-500 font-semibold flex items-center gap-1.5 font-sans">
+                    Plate Number: <span className="font-mono font-bold text-neutral-800 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200">{booking.vehicle_number}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Driver and Call button section */}
+              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                <div className="space-y-0.5 min-w-[120px] flex-1">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">Assigned Driver</span>
+                  <p className="text-sm font-bold text-neutral-800 leading-tight truncate">{booking.driver_name}</p>
+                  {!isCompleted && booking.driver_phone && (
+                    <p className="text-xs text-neutral-500 font-semibold font-mono mt-0.5">
+                      {booking.driver_phone}
+                    </p>
+                  )}
+                </div>
+
+                {!isCompleted && booking.driver_phone && (
+                  <a
+                    href={`tel:${booking.driver_phone}`}
+                    id="btn-call-driver-tracking"
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 active:scale-95 text-white rounded-xl text-xs font-bold font-sans transition flex items-center justify-center gap-2 shadow-sm border border-neutral-900 shrink-0 min-w-[110px]"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call Driver</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
           {/* Location Listings Info Cards */}
           <div className="space-y-3 bg-neutral-50 p-4 rounded-2xl border border-neutral-150">
             {/* Pickup Location */}

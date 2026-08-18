@@ -72,9 +72,9 @@ export default function MapPicker({
   useEffect(() => {
     injectLeafletStyles();
 
-    // Default target: New Delhi or standard fallback
-    const startLat = 28.6139;
-    const startLng = 77.2090;
+    // Default target: Kolkata, West Bengal
+    const startLat = 22.5726;
+    const startLng = 88.3639;
 
     if (mapContainerRef.current && !mapRef.current) {
       const map = L.map(mapContainerRef.current, {

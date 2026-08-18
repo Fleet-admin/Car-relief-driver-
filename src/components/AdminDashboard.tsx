@@ -91,9 +91,9 @@ export default function AdminDashboard({ onNotifyTriggered, onLogout }: AdminDas
   const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
     company_name: 'Car & Driver Relief Services',
     company_logo: '',
-    contact_number: '8637323873',
-    email_address: 'bappa.admin@gmail.com',
-    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+    contact_number: '9876543210',
+    email_address: 'admin@reliefservices.demo',
+    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, West Bengal 700091, India',
     timezone: 'Asia/Kolkata'
   });
 

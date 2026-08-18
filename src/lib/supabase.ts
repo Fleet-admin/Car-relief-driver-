@@ -43,7 +43,15 @@ const getSupabaseConfig = () => {
     ''
   ).trim();
 
-  const isConfigured = finalUrl.length > 0 && finalKey.length > 0;
+  const isDummyUrl = 
+    !finalUrl ||
+    finalUrl.includes('your-project-id') || 
+    finalUrl.includes('example.supabase.co') ||
+    finalUrl.includes('placeholder') ||
+    finalKey.includes('your-anon-publishable-key') ||
+    finalKey.includes('placeholder');
+
+  const isConfigured = !isDummyUrl && finalUrl.length > 10 && finalKey.length > 10;
 
   // Mask sensitive database URL and Key details for secure production console verification
   const maskedUrl = finalUrl ? `${finalUrl.substring(0, 15)}...${finalUrl.substring(finalUrl.length - 4 || 0)}` : 'NOT_FOUND';
@@ -447,11 +455,8 @@ export const SupabaseService = {
           .order('name', { ascending: true });
 
         if (error) {
-          console.error('[Supabase Service error] Error querying vehicle_categories table:', error);
-          throw error;
-        }
-
-        if (data) {
+          console.warn('[Supabase Service warning] Could not query vehicle_categories table, using fallback:', error.message || error);
+        } else if (data && data.length > 0) {
           console.log('[Supabase Service Debug] Data received from Supabase', data);
           return (data as any[]).map((row: any) => {
             let name = row.name || '';
@@ -479,11 +484,21 @@ export const SupabaseService = {
           });
         }
       } catch (err: any) {
-        console.error('[Supabase Service Warn] Exception querying vehicle_categories table:', err);
-        throw err;
+        console.warn('[Supabase Service warning] Exception querying vehicle_categories table, falling back to local data:', err?.message || err);
       }
-    } else {
-      console.warn('[Supabase Service warning] Supabase client is not initialized.');
+    }
+
+    // Check cached local storage categories if any
+    try {
+      const cached = localStorage.getItem('admin_vehicle_categories');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
     }
 
     // fallback when Supabase connection is offline/local mock context
@@ -1132,9 +1147,9 @@ export const SupabaseService = {
     const defaults: GeneralSettings = {
       company_name: 'Car & Driver Relief Services',
       company_logo: '',
-      contact_number: '8637323873',
-      email_address: 'bappa.admin@gmail.com',
-      office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+      contact_number: '9876543210',
+      email_address: 'admin@reliefservices.demo',
+      office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, West Bengal 700091, India',
       timezone: 'Asia/Kolkata'
     };
     if (supabaseClient) {
@@ -1146,14 +1161,30 @@ export const SupabaseService = {
           .maybeSingle();
         if (!error && data && data.value) {
           const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-          return { ...defaults, ...parsed };
+          const merged = { ...defaults, ...parsed };
+          if (merged.contact_number === '8637323873') merged.contact_number = defaults.contact_number;
+          if (merged.email_address === 'bappa.admin@gmail.com') merged.email_address = defaults.email_address;
+          if (merged.office_address === '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India') merged.office_address = defaults.office_address;
+          return merged;
         }
       } catch (err) {
         console.warn('[Supabase Service warning] Exception getting settings:', err);
       }
     }
     const stored = localStorage.getItem('general_settings');
-    return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const merged = { ...defaults, ...parsed };
+        if (merged.contact_number === '8637323873') merged.contact_number = defaults.contact_number;
+        if (merged.email_address === 'bappa.admin@gmail.com') merged.email_address = defaults.email_address;
+        if (merged.office_address === '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India') merged.office_address = defaults.office_address;
+        return merged;
+      } catch {
+        return defaults;
+      }
+    }
+    return defaults;
   },
 
   async saveSettings(settings: GeneralSettings): Promise<{ success: boolean; error?: string }> {

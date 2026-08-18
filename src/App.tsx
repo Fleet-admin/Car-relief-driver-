@@ -307,9 +307,9 @@ export default function App() {
   const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
     company_name: 'Car & Driver Relief Services',
     company_logo: '',
-    contact_number: '8637323873',
-    email_address: 'bappa.admin@gmail.com',
-    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, India',
+    contact_number: '9876543210',
+    email_address: 'admin@reliefservices.demo',
+    office_address: '123 Elite Transit Plaza, Sector V, Salt Lake, Kolkata, West Bengal 700091, India',
     timezone: 'Asia/Kolkata'
   });
 
@@ -1184,15 +1184,15 @@ export default function App() {
 
                         {/* Service Areas */}
                         <div className="bg-neutral-950 text-white rounded-2xl p-6 space-y-3 border border-neutral-850" id="about-areas">
-                          <h4 className="font-bold text-sm text-amber-500 uppercase tracking-wider">Operational Service Areas</h4>
+                          <h4 className="font-bold text-sm text-amber-500 uppercase tracking-wider">Operational Service Areas (West Bengal)</h4>
                           <p className="text-[11px] text-neutral-300 font-sans leading-relaxed">
-                            We provide on-demand driver relief, outstation trips, and logistical runs across:
+                            We provide on-demand driver relief, outstation trips, and logistical runs exclusively across West Bengal:
                           </p>
                           <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-neutral-400">
-                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Metro Central</span>
-                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Tech Corridor</span>
-                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Airport Lines</span>
-                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> National Highway</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Kolkata & Salt Lake</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Howrah & Hooghly Belt</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> North & South 24 Parganas</span>
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Durgapur, Asansol & Siliguri</span>
                           </div>
                         </div>
                       </div>
